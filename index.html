@@ -44,6 +44,37 @@
     .thing { border: 0; cursor: pointer; padding: 10px 6px; border-radius: 18px; background: #fff; box-shadow: 0 4px 0 #e6d7f2; font: 700 15px 'Baloo 2', sans-serif; color: var(--ink); display: flex; flex-direction: column; align-items: center; gap: 2px; }
     .thing:hover { background: #fff0f7; }
     .thing img { width: 88px; height: 88px; object-fit: contain; }
+    #topright { position: fixed; right: 16px; top: 14px; display: flex; gap: 8px; }
+    #topright span { padding: 4px 16px; border-radius: 999px; background: rgba(255,250,243,.9); box-shadow: 0 3px 0 rgba(58,42,74,.12); font-weight: 800; font-size: 20px; }
+    #who:empty, #players:empty { display: none; }
+    .join { margin: 14px auto 0; padding: 10px 14px; border-radius: 16px; background: #eef7ea; font-size: 16px; max-width: 440px; }
+    .join:empty { display: none; }
+    .padfocus { outline: 4px solid #ef84ad !important; outline-offset: 3px; }
+    .join code { font: 700 17px ui-monospace, Consolas, monospace; color: var(--purple); user-select: all; }
+    #room:empty, #hint:empty { display: none; }
+
+    /* Character creator */
+    .card.creator { width: min(980px, 100%); display: grid; grid-template-columns: minmax(240px, 380px) 1fr; gap: 20px; text-align: left; }
+    .cleft { display: flex; flex-direction: column; gap: 10px; }
+    #cPreview { height: min(56vh, 460px); border-radius: 22px; background: radial-gradient(circle at 50% 35%, #fff 0%, #f6ecfb 55%, #ecdff5 100%); cursor: grab; touch-action: none; overflow: hidden; }
+    #cPreview canvas { display: block; width: 100%; height: 100%; }
+    #cName { font: 800 22px 'Baloo 2', sans-serif; color: var(--ink); text-align: center; padding: 6px 12px; border: 3px solid #eee3f7; border-radius: 16px; background: #fff; outline: none; }
+    #cName:focus { border-color: var(--purple); }
+    .cbtns { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+    .cbtns .big { margin: 0; }
+    .cright h2 { margin-bottom: 10px; }
+    #cTabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    #cOptions { display: flex; flex-direction: column; gap: 12px; max-height: min(60vh, 520px); overflow: auto; padding-right: 4px; }
+    .crow { display: flex; flex-direction: column; gap: 4px; }
+    .clabel { font-weight: 800; font-size: 16px; color: var(--purple); }
+    .copts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { border: 0; cursor: pointer; padding: 6px 14px; border-radius: 999px; font: 700 16px 'Baloo 2', sans-serif; background: #fff; color: var(--ink); box-shadow: 0 3px 0 #e6d7f2; }
+    .chip.on { background: var(--pink); color: #fff; box-shadow: 0 3px 0 #d14d8c; }
+    .chip.locked { opacity: .55; }
+    .swatch { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; cursor: pointer; box-shadow: 0 0 0 2px #e6d7f2; }
+    .swatch.on { box-shadow: 0 0 0 3px var(--pink); transform: scale(1.12); }
+    #cMsg { min-height: 24px; font-weight: 700; color: var(--pink); }
+    @media (max-width: 720px) { .card.creator { grid-template-columns: 1fr; } #cPreview { height: 34vh; } }
   </style>
 </head>
 <body>
@@ -52,6 +83,7 @@
   <div id="hud" class="hidden">
     <div id="crosshair"></div>
     <div id="room"></div>
+    <div id="topright"><span id="players"></span><span id="who"></span><span id="stars">⭐ 0 / 12</span></div>
     <div id="hint"></div>
     <div id="banner"></div>
   </div>
@@ -69,8 +101,13 @@
         <span><kbd>C</kbd></span><span>change color (or paint a wall / floor!)</span>
         <span><kbd>B</kbd></span><span>get new things</span>
         <span><kbd>X</kbd></span><span>put it away</span>
+        <span>🖱️ Right-click</span><span>do something with it!</span>
+        <span><kbd>Space</kbd></span><span>jump!</span>
+        <span>🎮 Controller</span><span>🕹️ walk &amp; look · Ⓐ jump · Ⓧ pick up · Ⓑ do something · Ⓨ color</span>
       </div>
-      <button class="big" id="startBtn">Let's Play!</button>
+      <button class="big" id="startBtn">Let's Play!</button><br />
+      <button class="small" id="startCreator">👗 Change my character</button>
+      <div class="join"></div>
     </div>
   </div>
 
@@ -79,9 +116,13 @@
       <h2>Paused</h2>
       <p class="sub">Your house is saved automatically.</p>
       <button class="big" id="resumeBtn">Keep Playing</button><br />
+      <button class="small" id="charBtn">👗 Change my character</button>
       <button class="small" id="qualityBtn">✨ Graphics: Pretty</button>
+      <button class="small" id="soundBtn">🔊 Sound: On</button>
       <button class="small" id="resetBtn">Put everything back</button>
-      <button class="small" id="emptyBtn">Empty the house</button>
+      <button class="small" id="emptyBtn">Empty this building</button>
+      <button class="small" id="starsBtn">⭐ Reset my stars</button>
+      <div class="join" id="joinInfo"></div>
     </div>
   </div>
 
@@ -91,6 +132,25 @@
       <div id="tabs"></div>
       <div id="grid"></div>
       <p><button class="small" id="closeCatalog">Never mind</button></p>
+    </div>
+  </div>
+
+  <div id="creator" class="overlay hidden">
+    <div class="card creator">
+      <div class="cleft">
+        <div id="cPreview"></div>
+        <input id="cName" maxlength="16" placeholder="Your name" autocomplete="off" />
+        <div class="cbtns">
+          <button class="small" id="cRandom">🎲 Surprise me</button>
+          <button class="big" id="cDone">Done!</button>
+        </div>
+      </div>
+      <div class="cright">
+        <h2>Make your character</h2>
+        <div id="cTabs"></div>
+        <div id="cOptions"></div>
+        <div id="cMsg"></div>
+      </div>
     </div>
   </div>
 

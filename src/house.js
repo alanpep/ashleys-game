@@ -49,6 +49,7 @@ const SAGE = '#a9bea6';
 const LAMINATE = '#a39282';
 
 export const HOUSE = {
+  id: 'home',
   title: "Ashley's House",
   wallHeight: 2.7,
   roofHeight: 1.6,
@@ -70,12 +71,12 @@ export const HOUSE = {
   openings: [
     // doors
     { x: 15,   z: 0,   width: 1.0 },                         // front door
-    { x: 13.8, z: 8,   width: 1.6, curtains: 'floral' },     // patio door
-    { x: 6,    z: 4.1, width: 1.0 },                         // hallway <-> dining/kitchen
-    { x: 2.5,  z: 3.5, width: 0.9 },                         // Ashley's room
-    { x: 4.9,  z: 3.5, width: 0.8 },                         // bathroom
-    { x: 2.5,  z: 4.7, width: 0.9 },                         // big bedroom
-    { x: 4.75, z: 4.7, width: 0.9 },                         // kids' room
+    { x: 13.8, z: 8,   width: 1.6, double: true, glass: true, curtains: 'floral' }, // patio doors
+    { x: 6,    z: 4.1, width: 1.0, noDoor: true },           // hallway <-> dining/kitchen (doorway, no door)
+    { x: 2.5,  z: 3.5, width: 0.9, into: "Ashley's Room" },  // Ashley's room
+    { x: 4.9,  z: 3.5, width: 0.8, into: 'Bathroom' },       // bathroom
+    { x: 2.5,  z: 4.7, width: 0.9, into: 'Big Bedroom' },    // big bedroom
+    { x: 4.75, z: 4.7, width: 0.9, into: "Kids' Room" },     // kids' room
     // open floor plan
     { x: 10,   z: 1.5, width: 3, kind: 'railing', column: 3 }, // dining railing + white pillar
     { x: 10,   z: 3.5, width: 1, kind: 'open' },             // steps down to living room
@@ -197,7 +198,7 @@ export const HOUSE = {
   // Flat stone areas outside: patio and front walkway
   patios: [
     { x: 12.6, z: 8.1, w: 4.4, d: 2.4 },
-    { x: 14.6, z: -4,  w: 0.8, d: 3.92 },
+    { x: 14.6, z: -7.5, w: 0.8, d: 7.42 },
   ],
 
   // Chimney above the fireplace
@@ -208,5 +209,5 @@ export const HOUSE = {
     [13.7, -0.6, 0.9], [16.3, -0.7], [-0.6, 6.5, 1.1], [17.6, 5.5], [0.8, 8.7, 0.9], [6.5, 8.7]],
 
   // Trees in the yard: [x, z, 'round' or 'pine', size]
-  trees: [[3, -6, 'pine', 1.1], [-5, 2], [21, -3], [8, 16, 'round', 1.2], [21, 12], [-5, 11, 'pine'], [26, 4, 'pine', 0.9]],
+  trees: [[3, -5, 'pine', 1.1], [8, 16, 'round', 1.2], [21, 12], [-4, 11, 'pine']],
 };

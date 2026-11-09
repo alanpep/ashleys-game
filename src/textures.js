@@ -92,20 +92,46 @@ export const tex = {
     }
   }, 1 / 4); }),
 
-  // Roof shingles. Rows run along the texture's U axis (that's how the roof's UVs are laid out).
+  // Roof shingles (light gray so the roof color can tint them).
+  // Rows run along the texture's U axis (that's how the roof's UVs are laid out).
   shingles: () => cached('shingles', () => { seed = 17; return canvasTex(256, (g, s) => {
-    g.fillStyle = '#3c3836'; g.fillRect(0, 0, s, s);
+    g.fillStyle = '#8f8f8f'; g.fillRect(0, 0, s, s);
     const rows = 8, rw = s / rows, tabs = 6, th = s / tabs;
     for (let r = 0; r < rows; r++) {
       const off = (r % 2) * th / 2;
       for (let t = -1; t <= tabs; t++) {
-        const v = 70 + Math.floor(rand() * 26);
-        g.fillStyle = `rgb(${v},${v - 4},${v - 7})`;
+        const v = 175 + Math.floor(rand() * 45);
+        g.fillStyle = `rgb(${v},${v},${v})`;
         g.fillRect(r * rw + 2, off + t * th + 2, rw - 3, th - 3);
       }
-      g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(r * rw, 0, 3, s);
+      g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(r * rw, 0, 3, s);
     }
   }, 1 / 1.2); }),
+
+  // Light lap siding boards (tinted by the house color). 1 tile = 1 m, 6 boards.
+  lap: () => cached('lap', () => canvasTex(128, (g, s) => {
+    for (let i = 0; i < 6; i++) {
+      const y = (i * s) / 6;
+      const grd = g.createLinearGradient(0, y, 0, y + s / 6);
+      grd.addColorStop(0, '#cfcfcf'); grd.addColorStop(0.22, '#ffffff'); grd.addColorStop(1, '#f2f2f2');
+      g.fillStyle = grd; g.fillRect(0, y, s, s / 6);
+    }
+  })),
+
+  // Checkerboard floor (tinted). 1 tile = 0.8 m
+  checker: () => cached('checker', () => canvasTex(128, (g, s) => {
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, s, s);
+    g.fillStyle = '#c9c9c9'; g.fillRect(0, 0, s / 2, s / 2); g.fillRect(s / 2, s / 2, s / 2, s / 2);
+  }, 1 / 0.8)),
+
+  water: () => cached('water', () => { seed = 21; return canvasTex(256, (g, s) => {
+    g.fillStyle = '#6fb8dc'; g.fillRect(0, 0, s, s);
+    g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 2; g.lineCap = 'round';
+    for (let i = 0; i < 40; i++) {
+      const x = rand() * s, y = rand() * s, w = 8 + rand() * 18;
+      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + w / 2, y - 4, x + w, y); g.stroke();
+    }
+  }, 1 / 3); }),
 
   // Cream lap siding for the gable ends. 1 tile = 1 m, 6 boards.
   siding: () => cached('siding', () => canvasTex(128, (g, s) => {
@@ -166,6 +192,33 @@ export const tex = {
     }
   }); }),
 };
+
+// Awning stripes, not cached (each awning has its own colors)
+export function stripes(a, b) {
+  const t = canvasTex(64, (g, s) => {
+    g.fillStyle = a; g.fillRect(0, 0, s, s);
+    g.fillStyle = b; g.fillRect(0, 0, s / 2, s);
+  });
+  t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+}
+
+// A sign with words on it
+export function signTexture(text, bg, fg, w = 512, h = 128) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 8; g.strokeRect(10, 10, w - 20, h - 20);
+  g.fillStyle = fg;
+  g.font = `800 ${Math.floor(h * 0.5)}px "Baloo 2", "Trebuchet MS", sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, w / 2, h / 2 + 4, w - 40);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
 
 // Make a box's texture coordinates measured in meters (so textures don't stretch).
 export function scaleBoxUV(geo, w, h, d) {

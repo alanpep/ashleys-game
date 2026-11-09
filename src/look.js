@@ -10,10 +10,28 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { P } from './palette.js';
 import { tex } from './textures.js';
 
+// Graphics levels. "low" is for laptops: no screen effects or shadows, slightly lower resolution,
+// only a couple of room lights, and things far away aren't drawn.
 const QUALITY = {
-  pretty: { ao: true, shadow: 2048, ratio: () => Math.min(devicePixelRatio, 2) },
-  fast: { ao: false, shadow: 1024, ratio: () => 1 },
+  pretty: { ao: true, post: true, shadows: true, shadow: 2048, ratio: () => Math.min(devicePixelRatio, 2), lights: 8, fog: [70, 230], view: 150 },
+  fast: { ao: false, post: true, shadows: true, shadow: 1024, ratio: () => 1, lights: 4, fog: [55, 170], view: 100 },
+  low: { ao: false, post: false, shadows: false, shadow: 512, ratio: () => 0.75, lights: 2, fog: [35, 105], view: 60 },
 };
+export const QUALITY_ORDER = ['pretty', 'fast', 'low'];
+// the graphics level to start with: whatever was used last time, or a guess for this computer
+export function startQuality() {
+  let q = null;
+  try { q = localStorage.getItem('quality'); } catch { /* no storage */ }
+  return QUALITY[q] ? q : guessQuality();
+}
+// a first guess for computers we haven't seen before
+function guessQuality() {
+  let gpu = '';
+  try { const gl = document.createElement('canvas').getContext('webgl2'), ext = gl.getExtension('WEBGL_debug_renderer_info'); gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : ''; gl.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* unknown */ }
+  const builtIn = /intel|iris|uhd|hd graphics|radeon\(tm\) graphics|vega|mali|adreno|apple m1|swiftshader|llvmpipe/i.test(gpu);
+  const smallCpu = (navigator.hardwareConcurrency ?? 8) <= 4 || (navigator.deviceMemory ?? 8) <= 4;
+  return builtIn && smallCpu ? 'low' : builtIn || smallCpu ? 'fast' : 'pretty';
+}
 
 export function setupLook({ renderer, scene, camera, center }) {
   renderer.toneMapping = THREE.NeutralToneMapping;
@@ -34,14 +52,15 @@ export function setupLook({ renderer, scene, camera, center }) {
   sun.target.position.copy(center);
   sun.position.copy(center).add(new THREE.Vector3(14, 22, 18));
   const sc = sun.shadow.camera;
-  sc.left = -26; sc.right = 26; sc.top = 26; sc.bottom = -26; sc.near = 1; sc.far = 90;
+  sc.left = -24; sc.right = 24; sc.top = 24; sc.bottom = -24; sc.near = 1; sc.far = 90;
+  const sunOffset = new THREE.Vector3(14, 22, 18);
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.03;
   scene.add(sun, sun.target);
 
   // ---------- sky ----------
   scene.background = new THREE.Color(P.skyHorizon);
-  scene.fog = new THREE.Fog(P.skyHorizon, 45, 120);
+  scene.fog = new THREE.Fog(P.skyHorizon, 70, 230);
   const sky = new THREE.Mesh(new THREE.SphereGeometry(180, 32, 16), new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
     uniforms: { top: { value: new THREE.Color(P.skyTop) }, bottom: { value: new THREE.Color(P.skyHorizon) } },
@@ -57,9 +76,9 @@ void main() {
 
   const clouds = new THREE.Group();
   const cloudMat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: 0.55, roughness: 1, fog: false });
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 18; i++) {
     const c = new THREE.Group();
-    const a = (i / 14) * Math.PI * 2 + Math.sin(i * 7) * 0.3, r = 70 + (i % 3) * 18;
+    const a = (i / 18) * Math.PI * 2 + Math.sin(i * 7) * 0.3, r = 80 + (i % 3) * 25;
     c.position.set(center.x + Math.cos(a) * r, 26 + (i % 4) * 5, center.z + Math.sin(a) * r);
     for (let k = 0; k < 5; k++) {
       const b = new THREE.Mesh(new THREE.SphereGeometry(3 + ((i + k) % 3) * 1.4, 16, 12), cloudMat);
@@ -78,6 +97,12 @@ void main() {
   const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
   gtao.blendIntensity = 0.8;
   gtao.updateGtaoMaterial({ radius: 0.4, distanceExponent: 1.5, thickness: 1, scale: 1.1, samples: 16 });
+  // Sprites (speech bubbles, floating emoji) must not cast these soft shadows,
+  // or every bit of text gets a dark box around it.
+  gtao.overrideVisibility = function () {
+    const cache = this._visibilityCache;
+    this.scene.traverse((o) => { cache.set(o, o.visible); if (o.isPoints || o.isLine || o.isSprite) o.visible = false; });
+  };
   composer.addPass(gtao);
   const outline = new OutlinePass(new THREE.Vector2(innerWidth, innerHeight), scene, camera);
   outline.edgeStrength = 5;
@@ -88,8 +113,8 @@ void main() {
   composer.addPass(outline);
   composer.addPass(new OutputPass());
 
-  let quality = 'pretty';
-  try { quality = localStorage.getItem('quality') ?? 'pretty'; } catch { /* no storage */ }
+  let quality = startQuality();
+  let settings = QUALITY[quality];
 
   function resize() {
     camera.aspect = innerWidth / innerHeight;
@@ -100,16 +125,20 @@ void main() {
 
   function setQuality(q) {
     quality = QUALITY[q] ? q : 'pretty';
-    const Q = QUALITY[quality];
+    const Q = settings = QUALITY[quality];
     gtao.enabled = Q.ao;
+    sun.castShadow = Q.shadows;
     sun.shadow.mapSize.set(Q.shadow, Q.shadow);
     if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
     renderer.setPixelRatio(Q.ratio());
     composer.setPixelRatio(Q.ratio());
+    scene.fog.near = Q.fog[0]; scene.fog.far = Q.fog[1];
+    camera.far = Q.fog[1] + 25;
+    sky.scale.setScalar(Math.min(1, (camera.far - 5) / 180));
     resize();
     try { localStorage.setItem('quality', quality); } catch { /* no storage */ }
+    api.onQuality?.(Q);
   }
-  setQuality(quality);
   addEventListener('resize', resize);
 
   // ---------- outline: white when looking at something, pink while holding ----------
@@ -136,8 +165,15 @@ void main() {
   }
 
   const clock = { t: 0 };
-  function update(dt) {
+  function update(dt, focus) {
     clock.t += dt;
+    if (focus) { // keep the sharp shadows around wherever you are
+      const fx = Math.round(focus.x), fz = Math.round(focus.z);
+      if (fx !== sun.target.position.x || fz !== sun.target.position.z) {
+        sun.target.position.set(fx, 0, fz);
+        sun.position.copy(sun.target.position).add(sunOffset);
+      }
+    }
     sky.position.copy(camera.position);
     clouds.rotation.y += dt * 0.004;
     for (let i = sparks.length - 1; i >= 0; i--) {
@@ -153,11 +189,14 @@ void main() {
     }
   }
 
-  return {
-    render: () => composer.render(),
+  const api = {
+    render: () => (settings.post ? composer.render() : renderer.render(scene, camera)),
     update, burst, setOutline, setQuality,
     get quality() { return quality; },
+    get settings() { return settings; },
   };
+  setQuality(quality);
+  return api;
 }
 
 // ---------- little 3D pictures of each item for the catalog ----------
