@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>House</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root { --pink: #ff6fae; --purple: #8b5cf6; --ink: #3a2a4a; --card: #fffaf3; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #a8dcff; font-family: 'Baloo 2', 'Trebuchet MS', sans-serif; color: var(--ink); }
+    #app canvas { display: block; }
+    .hidden { display: none !important; }
+    kbd { display: inline-block; min-width: 1.6em; padding: 0 .4em; margin: 0 .1em; border-radius: 6px; background: #fff; color: var(--ink); font: 700 .85em 'Baloo 2', sans-serif; box-shadow: 0 2px 0 #c9b8d8; text-align: center; }
+
+    /* HUD */
+    #crosshair { position: fixed; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px rgba(58,42,74,.35); pointer-events: none; transition: all .15s ease; }
+    #crosshair.active { width: 22px; height: 22px; margin: -11px 0 0 -11px; background: rgba(255,255,255,.25); border: 3px solid #fff; }
+    #banner { position: fixed; left: 50%; top: 12%; transform: translate(-50%, 0); font-weight: 800; font-size: clamp(28px, 5vw, 44px); color: #fff; text-shadow: 0 3px 0 rgba(58,42,74,.35), 0 0 18px rgba(58,42,74,.25); opacity: 0; pointer-events: none; white-space: nowrap; }
+    #banner.show { animation: banner 2.2s ease forwards; }
+    @keyframes banner { 0% { opacity: 0; transform: translate(-50%, 12px) scale(.9); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -6px); } }
+    #room { position: fixed; left: 16px; top: 14px; padding: 4px 16px; border-radius: 999px; background: rgba(255,250,243,.9); box-shadow: 0 3px 0 rgba(58,42,74,.12); font-weight: 800; font-size: 20px; }
+    #hint { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 8px 18px; border-radius: 16px; background: rgba(58,42,74,.82); color: #fff; font-size: 17px; text-align: center; }
+    #toast { position: fixed; left: 50%; top: 18%; transform: translate(-50%, -10px); padding: 10px 22px; border-radius: 16px; background: var(--pink); color: #fff; font-weight: 800; font-size: 22px; opacity: 0; transition: .25s; pointer-events: none; }
+    #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    /* Menus */
+    .overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(90, 60, 120, .28); backdrop-filter: blur(4px); }
+    .card { width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 28px; border-radius: 28px; background: var(--card); box-shadow: 0 12px 0 rgba(0,0,0,.12); text-align: center; }
+    h1 { margin: 0; font-size: clamp(36px, 7vw, 56px); line-height: 1; color: var(--pink); text-shadow: 3px 3px 0 #ffd6e8; }
+    h2 { margin: 0 0 8px; font-size: 32px; color: var(--purple); }
+    .sub { margin: 6px 0 18px; font-size: 18px; }
+    .big { border: 0; cursor: pointer; padding: 12px 34px; margin: 6px; border-radius: 999px; font: 800 24px 'Baloo 2', sans-serif; color: #fff; background: var(--pink); box-shadow: 0 5px 0 #d14d8c; }
+    .big:active { transform: translateY(3px); box-shadow: 0 2px 0 #d14d8c; }
+    .small { border: 0; cursor: pointer; padding: 6px 16px; margin: 4px; border-radius: 999px; font: 700 16px 'Baloo 2', sans-serif; background: #eee3f7; color: var(--ink); }
+    .help { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 16px auto 4px; text-align: left; font-size: 17px; width: fit-content; }
+
+    #catalog .card { width: min(820px, 100%); }
+    #tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 14px; }
+    .tab { border: 0; cursor: pointer; padding: 6px 16px; border-radius: 999px; font: 700 17px 'Baloo 2', sans-serif; background: #eee3f7; color: var(--ink); }
+    .tab.on { background: var(--purple); color: #fff; }
+    #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+    .thing { border: 0; cursor: pointer; padding: 10px 6px; border-radius: 18px; background: #fff; box-shadow: 0 4px 0 #e6d7f2; font: 700 15px 'Baloo 2', sans-serif; color: var(--ink); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .thing:hover { background: #fff0f7; }
+    .thing img { width: 88px; height: 88px; object-fit: contain; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud" class="hidden">
+    <div id="crosshair"></div>
+    <div id="room"></div>
+    <div id="hint"></div>
+    <div id="banner"></div>
+  </div>
+  <div id="toast"></div>
+
+  <div id="start" class="overlay hidden">
+    <div class="card">
+      <h1 id="title">My House</h1>
+      <p class="sub">Walk around, pick things up, and decorate!</p>
+      <div class="help">
+        <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>walk (hold <kbd>Shift</kbd> to run)</span>
+        <span>🖱️ Mouse</span><span>look around</span>
+        <span><kbd>Click</kbd></span><span>pick up / put down</span>
+        <span><kbd>R</kbd></span><span>turn it around</span>
+        <span><kbd>C</kbd></span><span>change color (or paint a wall / floor!)</span>
+        <span><kbd>B</kbd></span><span>get new things</span>
+        <span><kbd>X</kbd></span><span>put it away</span>
+      </div>
+      <button class="big" id="startBtn">Let's Play!</button>
+    </div>
+  </div>
+
+  <div id="pause" class="overlay hidden">
+    <div class="card">
+      <h2>Paused</h2>
+      <p class="sub">Your house is saved automatically.</p>
+      <button class="big" id="resumeBtn">Keep Playing</button><br />
+      <button class="small" id="qualityBtn">✨ Graphics: Pretty</button>
+      <button class="small" id="resetBtn">Put everything back</button>
+      <button class="small" id="emptyBtn">Empty the house</button>
+    </div>
+  </div>
+
+  <div id="catalog" class="overlay hidden">
+    <div class="card">
+      <h2>What do you want to add?</h2>
+      <div id="tabs"></div>
+      <div id="grid"></div>
+      <p><button class="small" id="closeCatalog">Never mind</button></p>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
