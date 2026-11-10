@@ -8,7 +8,8 @@ import { buildForest } from './forest.js';
 import { WOODS, FARM, BEACH } from './neighborhood.js';
 import { buildPlaces } from './places.js';
 import { buildFunPark } from './funpark.js';
-import { FUNPARK } from './neighborhood.js';
+import { FUNPARK, AIRPORT, FOREST_BOUNDS } from './neighborhood.js';
+import { buildAirport } from './airport.js';
 import { tex } from './textures.js';
 import { P } from './palette.js';
 import { mergeStatic, remap } from './merge.js';
@@ -52,6 +53,7 @@ export function buildWorld() {
   for (let i = 0; i < 26; i++) {
     const a = (i / 26) * Math.PI * 2, r = 205 + (i % 3) * 15;
     if (Math.cos(a) > 0.35) continue; // no hills out east: that's the Great Lake
+    if (Math.sin(a) < -0.5) continue; // or down south by the airport
     if (Math.sin(a) > 0.35) continue; // or up north, behind the Fun Park
     const hill = new THREE.Mesh(new THREE.SphereGeometry(30 + (i % 4) * 8, 20, 12), hillMat[i % 3]);
     hill.position.set(8 + Math.cos(a) * r, -12, -12 + Math.sin(a) * r);
@@ -187,7 +189,7 @@ export function buildWorld() {
   ];
   // Kenwood Woods: the big forest all around town (but not on the farm or the beach)
   for (const r of WOODS.clearRects) keepClear.push(r);
-  const forest = buildForest(W, WOODS, { loop, keepClear, bounds: WORLD_BOUNDS });
+  const forest = buildForest(W, WOODS, { loop, keepClear, bounds: FOREST_BOUNDS });
   // the farm and the beach
   const places = buildPlaces(W, { FARM, BEACH, loop });
   group.add(places.group);
@@ -196,6 +198,10 @@ export function buildWorld() {
   const funpark = buildFunPark(W, FUNPARK);
   group.add(funpark.group);
   W.funpark = funpark;
+  // PepCity Airport
+  const airport = buildAirport(W, AIRPORT);
+  group.add(airport.group);
+  W.airport = airport;
   group.add(forest.group);
   W.forest = forest;
   // a few scattered trees inside the road loop (never on a road or the parking lot)

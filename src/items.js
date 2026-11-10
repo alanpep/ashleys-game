@@ -1484,6 +1484,78 @@ export const CATALOG = [
     b.add(new THREE.CapsuleGeometry(0.03, 0.24, 4, 8), '#c8563c', 0, 0.09, 0).rotation.z = Math.PI / 2;
     b.box(0.2, 0.01, 0.015, 0, 0.12, 0, '#f2cf63');
   } },
+  // ---- Airport and marina: flyable planes and drivable boats ----
+  { id: 'airplane', name: 'Airplane', emoji: '✈️', cat: 'Outside', color: '#fbfaf7', action: 'drive', vehicle: 'plane', seat: { x: 0, z: 1.0, eye: 2.05 }, mainOpts: { roughness: 0.35, metalness: 0.1 },
+    animate: (g) => { const p = g.getObjectByName('prop'); if (p) { g.userData.pa = (g.userData.pa ?? 0) + (g.userData.engine ?? 0) * 0.9; p.rotation.z = g.userData.pa; } },
+    build: (b) => {
+      b.add(new THREE.CylinderGeometry(0.7, 0.5, 5.2, 20), MAIN, 0, 1.45, 0.4).rotation.x = Math.PI / 2;
+      b.add(new THREE.CylinderGeometry(0.5, 0.14, 2.4, 16), MAIN, 0, 1.5, -3.4).rotation.x = Math.PI / 2;
+      b.ball(0.7, 0, 1.45, 3.0, MAIN).scale.z = 0.6;
+      b.box(9, 0.14, 1.5, 0, 1.25, 0.8, MAIN);
+      for (const s of [-1, 1]) b.box(0.9, 0.15, 1.5, s * 4.1, 1.25, 0.8, '#d9443a');
+      b.box(3.2, 0.1, 0.9, 0, 1.6, -4.3, MAIN);
+      b.box(0.12, 1.4, 1.1, 0, 1.6, -4.4, '#d9443a');
+      for (const s of [-1, 1]) b.box(0.03, 0.18, 4.6, s * 0.69, 1.35, 0.4, '#4f86c6');
+      b.ball(0.62, 0, 1.95, 1.1, '#cfe6f2', GLASS).scale.set(1, 0.9, 1.7);
+      b.box(0.6, 0.5, 0.1, 0, 1.6, 0.3, '#5a4a45');
+      for (const s of [-1, 1]) {
+        b.box(0.08, 0.95, 0.08, s * 1.1, 0.3, 0.9, METAL);
+        b.add(new THREE.CylinderGeometry(0.32, 0.32, 0.2, 20), BLACK, s * 1.1, 0.32, 0.9).rotation.z = Math.PI / 2;
+      }
+      b.box(0.08, 0.95, 0.08, 0, 0.3, 2.6, METAL);
+      b.add(new THREE.CylinderGeometry(0.28, 0.28, 0.16, 20), BLACK, 0, 0.28, 2.6).rotation.z = Math.PI / 2;
+      const p = b.sub('prop', 0, 1.45, 3.45);
+      p.ball(0.18, 0, 0, 0, '#d9443a');
+      p.box(0.16, 2.0, 0.05, 0, -1.0, 0.05, '#3b3b42');
+    } },
+  { id: 'jet', name: 'Passenger Jet', emoji: '🛫', cat: 'Outside', color: '#fbfaf7', action: 'drive', vehicle: 'plane', seat: { x: 0, z: 4.2, eye: 3.0 }, mainOpts: { roughness: 0.3, metalness: 0.15 },
+    build: (b) => {
+      b.add(new THREE.CylinderGeometry(1.1, 1.1, 9, 24), MAIN, 0, 2.2, 0).rotation.x = Math.PI / 2;
+      b.ball(1.1, 0, 2.2, 4.5, MAIN).scale.z = 1.4;
+      b.add(new THREE.CylinderGeometry(1.1, 0.3, 3, 20), MAIN, 0, 2.35, -6).rotation.x = Math.PI / 2;
+      b.box(13, 0.2, 2.6, 0, 1.9, -0.5, MAIN);
+      for (const s of [-1, 1]) {
+        b.box(0.05, 0.3, 8.6, s * 1.1, 2.3, 0, '#4f86c6');
+        b.add(new THREE.CylinderGeometry(0.45, 0.45, 1.8, 16), '#c9ccd2', s * 3.2, 1.45, 0.3).rotation.x = Math.PI / 2;
+        b.box(0.12, 1.5, 0.12, s * 1.4, 0.35, -0.5, METAL);
+        b.add(new THREE.CylinderGeometry(0.4, 0.4, 0.3, 20), BLACK, s * 1.4, 0.4, -0.5).rotation.z = Math.PI / 2;
+      }
+      b.box(0.2, 2.6, 2.2, 0, 2.6, -6.6, '#4f86c6');
+      b.box(5, 0.15, 1.4, 0, 2.6, -6.8, MAIN);
+      b.box(1.4, 0.35, 0.3, 0, 2.6, 5.4, '#2a3a4a');
+      b.box(0.12, 1.5, 0.12, 0, 0.35, 3.5, METAL);
+      b.add(new THREE.CylinderGeometry(0.35, 0.35, 0.25, 20), BLACK, 0, 0.35, 3.5).rotation.z = Math.PI / 2;
+    } },
+  { id: 'speedboat', name: 'Speedboat', emoji: '🚤', cat: 'Outside', color: '#fbfaf7', action: 'drive', vehicle: 'boat', seat: { x: 0.45, z: -0.1, eye: 1.3 }, mainOpts: { roughness: 0.3, metalness: 0.1 },
+    build: (b) => {
+      b.box(2.0, 0.7, 4.2, 0, 0, -0.4, MAIN);
+      b.box(1.414, 0.7, 1.414, 0, 0, 1.7, MAIN).rotation.y = Math.PI / 4;
+      for (const s of [-1, 1]) b.box(0.1, 0.22, 4.2, s * 0.95, 0.7, -0.4, '#4f86c6');
+      b.box(2.0, 0.22, 0.1, 0, 0.7, -2.45, '#4f86c6');
+      b.box(1.8, 0.45, 0.06, 0, 0.75, 0.9, '#cfe6f2', GLASS).rotation.x = -0.4;
+      for (const s of [-1, 1]) { b.box(0.6, 0.2, 0.6, s * 0.45, 0.7, -0.2, '#f4f1ea'); b.box(0.6, 0.45, 0.12, s * 0.45, 0.7, -0.5, '#f4f1ea'); }
+      b.box(1.6, 0.25, 0.6, 0, 0.7, -1.9, '#f4f1ea');
+      b.box(0.5, 0.35, 0.3, 0.45, 0.7, 0.6, '#3b3b42');
+      b.cyl(0.15, 0.15, 0.03, 0.45, 1.05, 0.55, BLACK).rotation.x = 1.1;
+      b.box(0.45, 0.9, 0.45, 0, 0.1, -2.75, '#3b3b42');
+    } },
+  { id: 'pontoon', name: 'Pontoon Boat', emoji: '⛴️', cat: 'Outside', color: '#fbfaf7', action: 'drive', vehicle: 'boat', seat: { x: 0.7, z: 0.5, eye: 1.75 }, mainOpts: { roughness: 0.5 },
+    build: (b) => {
+      for (const s of [-1, 1]) {
+        b.add(new THREE.CylinderGeometry(0.35, 0.35, 6, 16), METAL, s * 0.95, 0.35, 0).rotation.x = Math.PI / 2;
+        b.ball(0.35, s * 0.95, 0.35, 3.0, METAL);
+        b.box(0.06, 0.6, 5.6, s * 1.27, 0.76, -0.2, MAIN);
+      }
+      b.box(2.6, 0.12, 6.2, 0, 0.64, 0, '#b07f55');
+      b.box(2.6, 0.6, 0.06, 0, 0.76, -3.05, MAIN);
+      b.box(2.2, 0.4, 0.6, 0, 0.76, -2.5, '#4f86c6');
+      b.box(0.6, 0.4, 2.0, -0.9, 0.76, -1.0, '#4f86c6');
+      b.box(0.6, 0.8, 0.5, 0.7, 0.76, 1.2, MAIN);
+      b.cyl(0.15, 0.15, 0.03, 0.7, 1.6, 1.1, BLACK).rotation.x = 1.1;
+      for (const x of [-1.2, 1.2]) for (const z of [-2.4, 0.4]) b.box(0.05, 1.5, 0.05, x, 0.76, z, METAL);
+      b.box(2.5, 0.06, 3.0, 0, 2.26, -1.0, '#4f86c6');
+      b.box(0.45, 0.9, 0.45, 0, 0.1, -3.4, '#3b3b42');
+    } },
 ];
 
 export const BY_ID = Object.fromEntries(CATALOG.map((d) => [d.id, d]));
@@ -1513,7 +1585,7 @@ export function createItem(type, color) {
     hz: Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
     rotY: 0, onWall: false,
     action: def.action ?? (def.id === 'fireplace' ? 'toggle' : null),
-    seat: def.seat ?? null,
+    seat: def.seat ?? null, vehicle: def.vehicle ?? null,
     gives: def.gives ?? null, giveMsg: def.giveMsg ?? '', giveLabel: def.giveLabel ?? 'get one!',
     anim: def.animate ?? null,
   };

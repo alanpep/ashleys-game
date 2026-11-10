@@ -602,8 +602,17 @@ export function setupInteractions(ctx) {
     fairyhouse: { label: 'knock on the tiny door', fn: (it) => { for (let i = 0; i < 3; i++) tone(900, 0.05, 'triangle', 0.08, 1, i * 0.15); S.sparkle(); for (let i = 0; i < 4; i++) effect(i * 0.2, () => {}, () => look.burst(V(it.position.x, 0.9, it.position.z), 14)); say(it, pick(['A fairy lives here! 🧚', 'Tiny footprints... 👣', 'Shhh, the fairies are sleeping 💤', 'You hear tiny giggles! ✨'])); } },
     birdhouse: { label: 'peek inside', fn: (it) => { for (let i = 0; i < 6; i++) tone(2200 + Math.random() * 900, 0.06, 'sine', 0.06, 1.3, i * 0.11); floaters(['🐦', '🪺', '🎶'], it, 3); say(it, pick(['Baby birds! 🐣', 'Tweet tweet! 🐦', 'A cozy nest! 🪺'])); } },
     berries: { label: 'eat them', mine: true, fn: eat },
+    petcounter: { label: 'adopt your very own pet! 🐾', mine: true, fn: () => ctx.openAdopt() },
     rug: { label: 'wiggle your toes', fn: (it) => { noise(0.4, 0.04, 1200); say(it, 'So soft! ☁️'); } },
   };
+  // watering the plants (a chore!)
+  const waterDef = { label: 'water it 💧', fn: (it) => {
+    S.water(1.5);
+    const tp = top(it) + 0.6; emitter(1.2, 50, () => [V(it.position.x + rand(-0.15, 0.15), tp, it.position.z + rand(-0.15, 0.15)), V(rand(-0.2, 0.2), -1.5, rand(-0.2, 0.2)), { color: '#7cc4e4', size: rand(0.025, 0.04), life: 0.6 }]);
+    hop(it, 0.06, 1); effect(1.2, () => {}, () => floaters(['🌱', '💧', '🌸'], it, 2));
+    say(it, pick(['Glug glug! 🌱', 'Thank you! 🌸', 'Ahh, so fresh! 💧']));
+  } };
+  for (const k of ['plant', 'smallplant', 'flowers', 'flowerbed']) DEFS[k] = waterDef;
   DEFS.theaterseat = { label: 'sit down and watch the movie! 🍿', mine: true, fn: (it) => { sit(it); setTimeout(() => ctx.openMovie(), 600); } };
   for (const k of Object.keys(SEATS)) if (!DEFS[k]) DEFS[k] = { label: 'sit down', mine: true, fn: sit };
   for (const k of Object.keys(TOGGLES)) DEFS[k] = { label: (it) => (it.userData.on ? 'turn off' : 'turn on'), mine: true, toggle: true, fn: (it) => { setOn(it, !it.userData.on); ctx.save(); } };
@@ -639,6 +648,7 @@ export function setupInteractions(ctx) {
     run(it) {
       const d = defFor(it);
       d.fn(it, true);
+      ctx.did?.(it.userData.type);
       if (!d.mine) ctx.share(it); // the other player sees and hears it too
     },
     replay(it) { const d = defFor(it); if (!d.mine) d.fn(it, false); },

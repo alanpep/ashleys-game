@@ -52,7 +52,7 @@
     /* Math time */
     .quizcard { width: min(700px, 100%); }
     .qstars { font-size: 34px; letter-spacing: 4px; margin: 4px 0 8px; }
-    .qtext { font-size: clamp(34px, 7vw, 58px); font-weight: 800; color: var(--purple); margin: 6px 0; }
+    .qtext { font-size: clamp(28px, 5vw, 44px); font-weight: 800; color: var(--purple); margin: 6px 0; }
     .qpics { font-size: clamp(26px, 5vw, 40px); min-height: 52px; margin: 6px 0 14px; display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; align-items: center; }
     .qgroup { padding: 4px 10px; border-radius: 16px; background: #fff7fb; letter-spacing: 2px; }
     .qgroup.gone { opacity: 0.25; text-decoration: line-through; }
@@ -75,6 +75,30 @@
     .moviescreen iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
     .moviebtns { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; gap: 10px; flex-wrap: wrap; }
     .movietitle { color: #f8dce8; font-weight: 800; font-size: 20px; }
+    #task { position: fixed; left: 16px; top: 58px; max-width: 46vw; font-weight: 800; font-size: 18px; color: #3a2a4a; padding: 6px 14px; border-radius: 14px; background: rgba(255,250,243,.9); }
+    #task:empty { display: none; }
+    #gamebar { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); padding: 8px 20px; border-radius: 999px; background: #ffd23f; color: #3a2a4a; font-weight: 800; font-size: 20px; display: none; white-space: nowrap; }
+    #gamebar.show { display: block; }
+    #peek { position: fixed; inset: 0; z-index: 30; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #3a2a4a; color: #fff; font-weight: 800; font-size: 34px; }
+    #peek.show { display: flex; }
+    #peekNum { font-size: 120px; }
+    .adcolors { display: flex; gap: 12px; justify-content: center; margin: 12px 0; }
+    .adname { font: 800 28px 'Baloo 2', sans-serif; padding: 8px 18px; border-radius: 18px; border: 3px solid #e6d7f2; text-align: center; width: min(360px, 90%); margin: 6px 0 12px; color: var(--ink); }
+    .pprow { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+    .ppask { margin: 6px auto 4px; padding: 10px 14px; border-radius: 18px; background: #fff3d6; max-width: 520px; }
+    .ppask p { margin: 0 0 8px; font-weight: 800; font-size: 19px; }
+    .ppbars { display: grid; gap: 8px; margin: 10px auto 16px; max-width: 420px; text-align: left; font-weight: 800; font-size: 20px; }
+    .pbar { height: 14px; border-radius: 99px; background: #eee3f3; overflow: hidden; margin-top: 3px; }
+    .pbar > div { height: 100%; border-radius: 99px; transition: width .3s; }
+    .jlist { display: flex; flex-direction: column; gap: 10px; margin: 8px 0 16px; text-align: left; }
+    .jrow { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 18px; background: #fff; box-shadow: 0 3px 0 #e6d7f2; }
+    .jemoji { font-size: 34px; }
+    .jtext { flex: 1; display: flex; flex-direction: column; }
+    .jtext small { color: #7a6a8a; font-size: 15px; }
+    .jpay { font-weight: 800; font-size: 20px; text-align: right; display: flex; flex-direction: column; }
+    .jpay small { font-size: 13px; color: #7a6a8a; }
+    .jgo { font-size: 20px !important; padding: 8px 16px; }
+    .qmark { color: var(--pink); }
     .padfocus { outline: 4px solid #ef84ad !important; outline-offset: 3px; }
     .join code { font: 700 17px ui-monospace, Consolas, monospace; color: var(--purple); user-select: all; }
     #room:empty, #hint:empty { display: none; }
@@ -109,11 +133,14 @@
   <div id="hud" class="hidden">
     <div id="crosshair"></div>
     <div id="room"></div>
-    <div id="topright"><span id="players"></span><span id="who"></span><span id="stars">⭐ 0 / 12</span></div>
+    <div id="topright"><span id="players"></span><span id="who"></span><span id="coins">🪙 0</span><span id="stars">⭐ 0 / 12</span></div>
+    <div id="task"></div>
+    <div id="gamebar"></div>
     <div id="hint"></div>
     <div id="banner"></div>
   </div>
   <div id="toast"></div>
+  <div id="peek"><div>🙈 Counting... no peeking!</div><div id="peekNum">10</div></div>
 
   <div id="start" class="overlay hidden">
     <div class="card">
@@ -148,13 +175,14 @@
       <button class="small" id="resetBtn">Put everything back</button>
       <button class="small" id="emptyBtn">Empty this building</button>
       <button class="small" id="starsBtn">⭐ Reset my stars</button>
+      <button class="small" id="jobsBtn">📋 Jobs board (J)</button>
       <div class="join" id="joinInfo"></div>
     </div>
   </div>
 
   <div id="quiz" class="overlay hidden">
     <div class="card quizcard">
-      <h2>📚 Math Time with Ms. Lopez</h2>
+      <h2 id="qTitle">📚 Learning Time with Ms. Lopez</h2>
       <div id="qStars" class="qstars"></div>
       <div id="qText" class="qtext"></div>
       <div id="qPics" class="qpics"></div>
@@ -171,6 +199,66 @@
         <span class="movietitle">🍿 Now showing at PepCity Cinema</span>
         <button class="small" id="movieLeave">Leave the movie</button>
       </div>
+    </div>
+  </div>
+
+  <div id="adopt" class="overlay hidden">
+    <div class="card quizcard">
+      <h2>🐾 Adopt a pet!</h2>
+      <p class="sub">Pick your new best friend</p>
+      <div id="adKinds" class="qchoices"></div>
+      <div id="adColors" class="adcolors"></div>
+      <input id="adName" class="adname" maxlength="14" placeholder="Type a name..." autocomplete="off" />
+      <div class="qchoices"><button class="qbtn small2 right" id="adGo">💖 Take me home!</button></div>
+      <button class="small" id="adClose">Not right now</button>
+    </div>
+  </div>
+
+  <div id="petpanel" class="overlay hidden">
+    <div class="card quizcard">
+      <h2 id="ppTitle">🐶 Buddy</h2>
+      <div id="ppBars" class="ppbars"></div>
+      <div class="qchoices" id="ppActs">
+        <button class="qbtn small2" id="ppFeed">🍖 Feed</button>
+        <button class="qbtn small2" id="ppCuddle">💖 Cuddle</button>
+        <button class="qbtn small2" id="ppBath">🛁 Bath</button>
+        <button class="qbtn small2" id="ppFetch">🎾 Play fetch</button>
+        <button class="qbtn small2" id="ppLeash">🦮 Leash</button>
+        <button class="qbtn small2" id="ppStay">✋ Stay</button>
+        <button class="qbtn small2" id="ppTreat">🦴 Treat (1 🪙)</button>
+      </div>
+      <div id="ppAsk" class="ppask hidden">
+        <p id="ppAskText">Are you sure?</p>
+        <div class="qchoices">
+          <button class="qbtn small2" id="ppByeYes">🏡 Yes, find a new home</button>
+          <button class="qbtn small2" id="ppByeNo">💖 No, keep them!</button>
+        </div>
+      </div>
+      <div class="pprow" id="ppFoot">
+        <button class="small" id="ppBye">🏡 Find a new home</button>
+        <button class="small" id="ppClose">All done</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="jobs" class="overlay hidden">
+    <div class="card quizcard">
+      <h2>📋 PepCity Jobs</h2>
+      <p class="sub" id="jbCoins"></p>
+      <div id="jbList" class="jlist"></div>
+      <button class="small" id="jbClose">Close</button>
+    </div>
+  </div>
+
+  <div id="playmenu" class="overlay hidden">
+    <div class="card quizcard">
+      <h2 id="pmTitle">Let's play!</h2>
+      <p class="sub">What do you want to play?</p>
+      <div class="qchoices">
+        <button class="qbtn small2" id="pmTag">🏃 Tag</button>
+        <button class="qbtn small2" id="pmSeek">🙈 Hide & Seek</button>
+      </div>
+      <button class="small" id="pmClose">Not right now</button>
     </div>
   </div>
 

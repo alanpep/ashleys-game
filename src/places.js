@@ -149,6 +149,24 @@ export function buildPlaces(W, { FARM, BEACH, loop }) {
   const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1.3, 12), new THREE.MeshStandardMaterial({ color: '#fff6c4', emissive: '#ffe27a', emissiveIntensity: 1.2 })); lamp.position.set(LH.x, 13.6, LH.z); group.add(lamp);
   const cap = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.3, 12), std('#d9443a')); cap.position.set(LH.x, 14.9, LH.z); group.add(cap);
   colliders.push([LH.x, LH.z, 3.5]);
+  // PepCity Marina: docks for the boats
+  const docks = [[P.x0, P.z - P.w / 2, P.x1, P.z + P.w / 2], ...(B.marina ?? [])];
+  for (const [a, b, c, d] of B.marina ?? []) {
+    const dk = new THREE.Mesh(new THREE.BoxGeometry(c - a, 0.1, d - b), plank); dk.position.set((a + c) / 2, 0.08, (b + d) / 2); dk.receiveShadow = dk.castShadow = true; group.add(dk);
+    const long = c - a > d - b;
+    for (let t = 0.5; t < (long ? c - a : d - b); t += 3) for (const s of [0, 1]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.4, 8), plankDark);
+      post.position.set(long ? a + t : (s ? c - 0.1 : a + 0.1), 0.3, long ? (s ? d - 0.1 : b + 0.1) : b + t); group.add(post);
+    }
+  }
+  if (B.marina) {
+    makeSign(group, { text: 'PepCity Marina', x: 109.5, y: 1.5, z: -41.5, rot: -90, w: 3.2, h: 0.55, bg: '#2f3f6a', posts: true });
+    for (const [x, z] of [[118, -54.3], [124, -54.3], [130, -54.3]]) { const buoy = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), std('#f2803a')); buoy.position.set(x, 0.1, z); group.add(buoy); }
+  }
+  // where you can stand: like the docks, but each finger pier reaches a bit into the main dock so
+  // there's no gap at the joint (the planks themselves don't overlap, so nothing flickers)
+  const walk = docks.map(([a, b, c, d], i) => (i >= 2 ? [a, b, c, d + 1] : [a, b, c, d]));
+  const onDock = (x, z, m = 0) => walk.some(([a, b, c, d]) => x > a + m && x < c - m && z > b + m && z < d - m);
   // lifeguard tower
   const tower = new THREE.Group(); tower.position.set(110.2, 0, -8); group.add(tower);
   for (const [x, z] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) part(new THREE.BoxGeometry(0.1, 1.8, 0.1), std('#fbfaf7'), tower, x, 0.9, z);
@@ -179,17 +197,24 @@ export function buildPlaces(W, { FARM, BEACH, loop }) {
   // how deep the water is here (how far you sink in), or 0 on land
   function waterDepth(x, z) {
     if (x < B.shore + 0.5) return 0;
-    if (Math.abs(z - P.z) < P.w / 2 && x < P.x1 + 0.5) return 0; // on the pier
+    if (onDock(x, z) || (Math.abs(z - P.z) < P.w / 2 && x < P.x1 + 0.5)) return 0; // on the pier or a dock
     return Math.min(1, (x - B.shore) / 7);
   }
 
   return {
     group,
     waterDepth,
+    // can a boat go here? (deep enough, and not into a dock or the lighthouse)
+    boatOk(x, z, r) {
+      if (x < B.shore + 4 || x > 600 || Math.abs(z + 10) > 420) return false;
+      for (const [a, b, c, d] of docks) if (x > a - r && x < c + r && z > b - r && z < d + r) return false;
+      if ((x - LH.x) ** 2 + (z - LH.z) ** 2 < (3.6 + r) ** 2) return false;
+      return true;
+    },
     blocked(x, z, r = 0.3) {
       for (const [cx, cz, cr] of colliders) if ((x - cx) ** 2 + (z - cz) ** 2 < (r + cr) ** 2) return true;
       // too deep to wade (except along the pier)
-      if (x > B.swimTo && !(Math.abs(z - P.z) < P.w / 2 - 0.2 && x < P.x1)) return true;
+      if (x > B.swimTo && !onDock(x, z, 0.2)) return true;
       // the pasture fence (with a gap for the gate)
       const [a, b, c, d] = FARM.pen, t = 0.35 + r;
       const nearX0 = Math.abs(x - a) < t && z > b - t && z < d + t, nearX1 = Math.abs(x - c) < t && z > b - t && z < d + t && !(z > g0 && z < g1);

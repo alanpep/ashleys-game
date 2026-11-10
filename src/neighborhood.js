@@ -585,6 +585,28 @@ export const BUILDINGS = [
       { item: 'workbench', x: -96.5, z: -51.6 }, { item: 'pegboard', x: -96.5, z: -51.89, y: 2.0 },
     ],
   },
+
+  // ---------------- PepCity Airport terminal ----------------
+  {
+    id: 'airport', title: 'PepCity Airport', wallHeight: 3.6, roof: 'flat', exterior: '#e3edf5', roofColor: '#c9d3dc',
+    rooms: [{ name: 'Airport Terminal', x: 0, z: -142, w: 26, d: 12, wall: '#f4f8fb', floor: '#c9ccd2', light: 10, recessed: true }],
+    openings: [
+      { x: 6, z: -130, width: 1.8, slide: true, auto: true },
+      { x: 13, z: -142, width: 2.0, slide: true, auto: true },
+      { x: 12, z: -130, width: 3, kind: 'window', bottom: 0.5, top: 3.0, noShutters: true },
+      { x: 20, z: -130, width: 3, kind: 'window', bottom: 0.5, top: 3.0, noShutters: true },
+      { x: 5, z: -142, width: 4, kind: 'window', bottom: 0.4, top: 3.2, noShutters: true },
+      { x: 21, z: -142, width: 4, kind: 'window', bottom: 0.4, top: 3.2, noShutters: true },
+    ],
+    patios: [{ x: 4.6, z: -130, w: 2.8, d: 2, color: '#e6ddd0' }],
+    sign: { text: 'PepCity Airport', x: 14, y: 3.95, z: -129.65, rot: 0, w: 5, h: 0.8, bg: '#4f86c6' },
+    furniture: [
+      ...[4, 9, 17, 22].map((x) => ({ item: 'bench', x, z: -139 })),
+      ...[4, 9, 17, 22].map((x) => ({ item: 'bench', x, z: -136.6, rot: 180 })),
+      { item: 'counter', x: 17.5, z: -132.6 }, { item: 'counter', x: 18.5, z: -132.6 }, { item: 'counter', x: 19.5, z: -132.6 },
+      { item: 'plant', x: 1, z: -131 }, { item: 'plant', x: 25, z: -131 }, { item: 'plant', x: 1, z: -141 }, { item: 'plant', x: 25, z: -141 },
+    ],
+  },
 ];
 
 // Which kind of grocery shelf goes where in Kenwood Market's aisles
@@ -807,6 +829,18 @@ export const AREAS = [
       { item: 'balloons', x: 61.5, z: 24, color: P.butter },
     ],
   },
+  { id: 'airport-planes', furniture: [
+    { item: 'airplane', x: 12, z: -152, rot: 180 },
+    { item: 'airplane', x: 24, z: -152, rot: 180, color: '#f7da7e' },
+    { item: 'airplane', x: 36, z: -152, rot: 180, color: '#ef84ad' },
+    { item: 'jet', x: 53, z: -153, rot: 180 },
+    { item: 'airplane', x: -24, z: -153, rot: 90, color: '#93c9ea' },
+  ] },
+  { id: 'marina-boats', furniture: [
+    { item: 'speedboat', x: 121, z: -50, rot: 180 },
+    { item: 'speedboat', x: 127, z: -50, rot: 180, color: '#d9443a' },
+    { item: 'pontoon', x: 133.5, z: -49.5, rot: 180 },
+  ] },
 ];
 
 // Named outdoor places (for the banner when you walk in)
@@ -877,7 +911,14 @@ export const STARS = [
 // Swimming pools: [x0, z0, x1, z1] of the water
 export const POOLS = [[27, -61, 39, -53]];
 
-export const WORLD_BOUNDS = { minX: -110, maxX: 140, minZ: -105, maxZ: 200 };
+export const WORLD_BOUNDS = { minX: -110, maxX: 140, minZ: -195, maxZ: 200 };
+export const FOREST_BOUNDS = { minX: -110, maxX: 140, minZ: -105, maxZ: 200 }; // the woods stop before the airport
+
+// ---------- PepCity Airport (south of town, down Airport Rd) ----------
+export const AIRPORT = {
+  roadX: 10, road: [-73, -128], lot: [0, -128, 30, -120], apron: [-36, -164, 66, -142.5], runway: [-75, -182, 95, -164],
+  taxiX: 20, tower: [34, -136], hangar: [-34, -160, -14, -146], sock: [82, -160],
+};
 
 // ---------- PepCity Fun Park (north of town, up Fun Park Dr) ----------
 export const FUNPARK = {
@@ -897,13 +938,15 @@ export const FUNPARK = {
 
 // The farm (west) and the beach on the Great Lake (east)
 export const FARM = { pen: [-100, -36, -80, -16], gate: [-26.5, -23.5], corn: [-106, -12, -96, 4], road: [-88, -48.5, -72.5, -45.5] };
-export const BEACH = { sand: 96, shore: 113, swimTo: 122, pier: { x0: 111, x1: 139, z: 10, w: 2.6 }, lot: [93.4, -16, 100, -6] };
+export const BEACH = { sand: 96, shore: 113, swimTo: 122, pier: { x0: 111, x1: 139, z: 10, w: 2.6 }, lot: [93.4, -16, 100, -6],
+  // PepCity Marina: a dock along the shore with three finger piers for the boats
+  marina: [[111, -45.2, 134, -42.8], [117.2, -54, 118.8, -45.2], [123.2, -54, 124.8, -45.2], [129.2, -54, 130.8, -45.2]] };
 
 // ---------- Kenwood Woods ----------
 export const WOODS = {
   loopRect: { x0: -70, x1: 90, z0: -70, z1: -12 },
   townStrip: { x0: -30, x1: 72, z0: -9, z1: 22 }, // the houses and their yards: no forest here
-  clearRects: [[-108, -64, -74, 6], [95, -200, 400, 200], [-45, 90, 135, 210], [75, -9, 85, 92]], // the farm, the beach, the fun park and its road
+  clearRects: [[-108, -64, -74, 6], [95, -200, 400, 200], [-45, 90, 135, 210], [75, -9, 85, 92], [4, -200, 16, -72], [-80, -200, 100, -124]], // the farm, the beach, the fun park and its road
   trails: [
     [[5, 17], [5, 28], [2, 38], [-12, 45], [-30, 47], [-48, 52], [-55, 62], [-40, 70], [-15, 72], [8, 66], [28, 60], [48, 63], [68, 58], [80, 46], [70, 36], [60, 31]],
     [[2, 38], [14, 42], [19.5, 45.5]],    // to the frog pond
@@ -1048,6 +1091,12 @@ export const PEOPLE = [
     path: [[-57, -18.5], [-44.5, -18.5]], speed: 0.7 },
   { name: 'Leo', look: { age: 'kid', body: 'boy', skin: '#f1c7a3', hair: 'spiky', hairColor: '#e0b25a', top: 'tee', topColor: '#ec7d72', bottom: 'shorts', bottomColor: '#4f8a46', face: 'freckles' },
     path: [[24.5, -2.0], [24.5, -7.6], [-20, -7.6], [-20, -2.0]], loop: true, speed: 1.3 },
+  { name: 'Captain Amelia', job: 'wave', at: [18, -146.5], face: 0, says: ['Want to fly a plane? Hop in! ✈️', 'Push W to speed up, then Space to lift off! 🛫', 'Have a great flight! ☁️', 'Land nice and slow on the runway! 🛬'],
+    look: { age: 'grownup', body: 'girl', skin: '#c68c63', hair: 'bun', hairColor: '#2b2220', top: 'long', topColor: '#2f3f6a', bottom: 'pants', bottomColor: '#2f3f6a', hat: 'cap', extraColor: '#2f3f6a', face: 'sunglasses' } },
+  { name: 'Agent Rosa', job: 'clipboard', at: [18.5, -131.4], face: 180, says: ['Welcome to PepCity Airport! ✈️', 'The planes are right through those doors! 🛄', 'Have a nice trip! 😊'],
+    look: { age: 'grownup', body: 'girl', skin: '#e0ac84', hair: 'bob', hairColor: '#4a2f22', top: 'long', topColor: '#4f86c6', bottom: 'skirt', bottomColor: '#2f3f6a', hat: 'none', face: 'none' } },
+  { name: 'Dockmaster Dan', job: 'point', at: [112.6, -40.6], face: -90, says: ['Welcome to the marina! ⚓', 'Hop in a boat and take it for a spin! 🚤', 'Drive back to a dock to get out! 🛥️', 'Watch out for the lighthouse! 🗼'],
+    look: { age: 'grownup', body: 'boy', skin: '#f1c7a3', hair: 'short', hairColor: '#c9c4bf', beard: 'beard', top: 'hoodie', topColor: '#f2cf63', bottom: 'pants', bottomColor: '#3f5f8f', hat: 'cap', extraColor: '#2f3f6a', face: 'none' } },
 ];
 
 // ---------- kids at school and grown-ups at the office ----------

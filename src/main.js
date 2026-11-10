@@ -16,6 +16,9 @@ import { setupAudio } from './audio.js';
 import { setupGamepad, BTN, PAD_HINTS } from './gamepad.js';
 import { setupQuiz } from './quiz.js';
 import { setupStory } from './story.js';
+import { setupPets } from './pets.js';
+import { setupJobs } from './jobs.js';
+import { setupGames } from './games.js';
 import { PEOPLE, SAYINGS, TRAFFIC, groceryShelf } from './neighborhood.js';
 
 const WALK = 2.6, RUN = 5;
@@ -210,11 +213,11 @@ function setCharacter(c) {
 const items = [];
 const byId = new Map(); // every item has an id so both players agree which one is which
 const animItems = new Set();
-let held = null, hovered = null, hoverSurface = null, hoverDoor = null, hoverFolk = null, hoverFan = null;
+let held = null, hovered = null, hoverSurface = null, hoverDoor = null, hoverFolk = null, hoverFan = null, hoverPet = false, hoverKid = null;
 let driving = null; // the car (or bus) you're driving
 let riding = null;  // the car a friend is driving, with you in it
 let parkRide = null, hoverRide = null; // a Fun Park ride you're on / looking at
-const drive = { v: 0, steer: 0, lastMouse: 0 };
+const drive = { v: 0, steer: 0, lastMouse: 0, pitch: 0, roll: 0, hum: 0, wake: 0, far: false };
 const padIn = { lx: 0, ly: 0, lt: 0, rt: 0 }; // the game controller's sticks and triggers
 const newId = () => Math.random().toString(36).slice(2, 10);
 
@@ -336,10 +339,17 @@ let saveTimer = null;
 // pets wander around, but what's saved is the spot they were put (so wandering doesn't change the house)
 const spotOf = (i) => i.userData.roam?.home ?? i.position;
 const recordOf = (i) => ({ id: i.userData.uid, t: i.userData.type, x: r3(spotOf(i).x), y: r3(spotOf(i).y), z: r3(spotOf(i).z), r: r3(i.rotation.y), c: i.userData.color, w: i.userData.onWall ? 1 : 0, off: i.userData.off ? 1 : 0,
-  ...(isToggle(i.userData.type) ? { s: i.userData.on ? 1 : 0 } : {}) });
+  ...(isToggle(i.userData.type) ? { s: i.userData.on ? 1 : 0 } : {}),
+  ...(i.userData.vehicle && (i.rotation.x || i.rotation.z) ? { px: r3(i.rotation.x), pz: r3(i.rotation.z) } : {}) });
+// a plane or boat being driven is saved where it would be parked (on the ground, level)
+function savedRecord(i) {
+  const r = recordOf(i), v = i.userData.vehicle;
+  if (v) { r.y = r3(i.userData.baseY); delete r.px; delete r.pz; }
+  return r;
+}
 const roomsNow = () => Object.fromEntries(world.rooms.map((r) => [r.name, { wall: r.wallColor, floor: r.floorColor }]));
 function snapshot() {
-  return { v: 3, areas: ALL_AREAS.map((a) => a.id), items: items.map(recordOf), rooms: roomsNow() };
+  return { v: 3, areas: ALL_AREAS.map((a) => a.id), items: items.map(savedRecord), rooms: roomsNow() };
 }
 function save() {
   clearTimeout(saveTimer);
@@ -506,6 +516,7 @@ function glideRemoteThings(dt) {
     it.position.y += (tg.y - it.position.y) * k;
     it.position.z += (tg.z - it.position.z) * k;
     it.rotation.y += wrapAngle(tg.r - it.rotation.y) * k;
+    if (it.userData.vehicle) { it.rotation.order = 'YXZ'; it.rotation.x += ((tg.px ?? 0) - it.rotation.x) * k; it.rotation.z += ((tg.pz ?? 0) - it.rotation.z) * k; }
     it.userData.rotY = it.rotation.y;
     it.userData.onWall = !!tg.w;
     it.updateMatrixWorld(true);
@@ -680,6 +691,10 @@ function putDown() {
   look.burst(at);
   fx('burst', at);
   beep(380, 0.08, 'triangle');
+  if (TOYS.includes(it.userData.type)) {
+    const box = items.find((b) => b.userData.type === 'toybox' && Math.hypot(b.position.x - it.position.x, b.position.z - it.position.z) < 1.4);
+    if (box) { removeItem(it); settleAll(); chime([700, 900]); toast('Into the toy box! 🧸'); jobs.did('tidy'); }
+  }
   save();
 }
 
@@ -719,6 +734,8 @@ const inter = setupInteractions({
   sfx: (name, pos) => sfx(name, pos),
   openStory: () => openStory(),
   openMovie: () => openMovie(),
+  openAdopt: () => { openOverlay('adopt'); pets.openAdopt(); },
+  did: (type) => { if (['plant', 'smallplant', 'flowers', 'flowerbed'].includes(type)) jobs.did('water'); },
 });
 function interact() {
   if (parkRide) { leaveParkRide(); return; }
@@ -727,6 +744,8 @@ function interact() {
   if (riding) { getOutOfRide(); return; }
   if (inter.busy()) { inter.standUp(); return; }
   if (held) return;
+  if (hoverPet) { openOverlay('petpanel'); pets.openPanel(); return; }
+  if (hoverKid) { openPlayMenu(hoverKid); return; }
   if (hovered) {
     const friend = holderOf(hovered);
     if (friend && hovered.userData.action === 'drive') { rideAlong(hovered, friend); return; }
@@ -816,6 +835,7 @@ function circleHits(c, ignore) {
   if (world.forest.blocked(c.x, c.z, c.r)) return true;
   if (world.places.blocked(c.x, c.z, c.r)) return true;
   if (world.funpark.blocked(c.x, c.z, c.r)) return true;
+  if (world.airport.blocked(c.x, c.z, c.r)) return true;
   for (const o of traffic.circles()) if ((c.x - o.x) ** 2 + (c.z - o.z) ** 2 < (c.r + o.r) ** 2) return true;
   for (const it of items) {
     if (it === ignore || it.userData.action !== 'drive') continue;
@@ -835,17 +855,23 @@ function enterCar(it) {
   player.yaw = it.rotation.y + Math.PI; player.pitch = -0.12;
   look.setOutline(null, false);
   tone(90, 0.5, 'sawtooth', 0.06, 1.8); // vroom
-  toast(it.userData.type === 'schoolbus' ? 'All aboard! 🚌' : 'Vroom vroom! 🚗');
+  drive.pitch = drive.roll = 0; drive.far = false;
+  it.userData.engine = 1;
+  const v = it.userData.vehicle;
+  toast(v === 'plane' ? 'Ready for takeoff! ✈️ Speed up with W, then press Space to fly!' : v === 'boat' ? 'Anchors up! 🚤' : it.userData.type === 'schoolbus' ? 'All aboard! 🚌' : 'Vroom vroom! 🚗', v === 'plane' ? 4000 : 2000);
 }
 function exitCar() {
   const car = driving, ud = car.userData, h = car.rotation.y, s = ud.seat;
+  if (ud.vehicle === 'plane' && car.position.y > ud.baseY + 0.05) { toast('Land on the ground first! 🛬'); return; }
+  if (ud.vehicle === 'plane' && Math.abs(drive.v) > 1.5) { toast('Slow down and stop first! (press S)'); return; }
   const spots = [[ud.hx + 0.6, s.z], [-(ud.hx + 0.6), s.z], [0, ud.hz + 0.7], [0, -(ud.hz + 0.7)]];
   let spot = null;
   for (const [lx, lz] of spots) {
     const x = car.position.x + lx * Math.cos(h) + lz * Math.sin(h), z = car.position.z - lx * Math.sin(h) + lz * Math.cos(h);
     if (!blocked(x, z)) { spot = [x, z]; break; }
   }
-  if (!spot) { toast("There's no room to get out here!"); return; }
+  if (!spot) { toast(ud.vehicle === 'boat' ? 'Drive next to a dock to get out! ⚓' : "There's no room to get out here!"); return; }
+  if (ud.vehicle) { car.position.y = ud.baseY; car.rotation.x = car.rotation.z = 0; ud.engine = 0; car.updateMatrixWorld(true); }
   driving = null;
   drive.v = 0;
   player.pos.set(spot[0], 0, spot[1]);
@@ -968,7 +994,114 @@ function jumpPose(ch, holding) {
   ch.parts.legL.rotation.x = -0.6; ch.parts.legR.rotation.x = 0.25;
 }
 
+// ---------- flying airplanes ----------
+const PLANE_HOME = { x: 10, z: -40 };
+function updatePlane(dt) {
+  const car = driving, ud = car.userData, clamp = THREE.MathUtils.clamp;
+  car.rotation.order = 'YXZ';
+  const jet = ud.type === 'jet', MAXV = jet ? 34 : 26, TAKEOFF = jet ? 17 : 13;
+  const thr = clamp((keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + padIn.rt - padIn.lt, -1, 1);
+  const turn = clamp((keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + padIn.lx, -1, 1);
+  let climb = clamp((keys.Space ? 1 : 0) - (keys.ShiftLeft || keys.ShiftRight ? 1 : 0) - padIn.ly, -1, 1);
+  const alt = car.position.y - ud.baseY, onGround = alt < 0.05;
+  if (thr > 0) drive.v += 6 * dt * thr;
+  else if (thr < 0) drive.v += (onGround ? 9 : 4) * dt * thr;
+  else if (onGround) { drive.v *= Math.exp(-dt * 0.5); if (Math.abs(drive.v) < 0.05) drive.v = 0; }
+  drive.v = clamp(drive.v, onGround ? -2 : 8, MAXV); // in the sky it never gets slow enough to fall
+  if (onGround && drive.v < TAKEOFF) climb = Math.min(climb, 0); // not fast enough to lift off yet
+  drive.pitch += (climb * 0.38 - drive.pitch) * Math.min(1, dt * 2.5);
+  if (onGround && drive.pitch < 0) drive.pitch = 0;
+  let vy = Math.sin(drive.pitch) * drive.v;
+  if (!onGround && drive.v < TAKEOFF) vy -= (TAKEOFF - drive.v) * 0.3; // too slow: gently sink
+  // turning: steer like a car on the ground, bank and turn in the air
+  let h = car.rotation.y;
+  if (onGround) h -= turn * dt * Math.min(1, Math.abs(drive.v) / 3) * 0.9 * Math.sign(drive.v || 1);
+  else h -= turn * dt * 0.75;
+  drive.roll += ((onGround ? 0 : turn * 0.55) - drive.roll) * Math.min(1, dt * 3);
+  // too far from PepCity: turn back home
+  const fx2 = car.position.x - PLANE_HOME.x, fz2 = car.position.z - PLANE_HOME.z;
+  if (!onGround && Math.hypot(fx2, fz2) > 380) {
+    h += wrapAngle(Math.atan2(-fx2, -fz2) - h) * Math.min(1, dt * 0.8);
+    if (!drive.far) { drive.far = true; toast('Turning back toward PepCity! 🏠'); }
+  } else if (Math.hypot(fx2, fz2) < 340) drive.far = false;
+  const sp = drive.v * Math.cos(drive.pitch);
+  const nx = car.position.x + Math.sin(h) * sp * dt, nz = car.position.z + Math.cos(h) * sp * dt;
+  let nAlt = Math.min(160, alt + vy * dt);
+  if (nAlt <= 0) {
+    if (!onGround) {
+      if (vy < -5) { toast('Bumpy landing! 😅', 1500); tone(110, 0.2, 'square', 0.07, 0.6); look.burst(new THREE.Vector3(car.position.x, 0.3, car.position.z), 14); }
+      else { toast('Nice landing! 🛬', 1500); chime([660, 880]); }
+      drive.pitch = 0;
+    }
+    nAlt = 0;
+  }
+  if (onGround && nAlt > 0.05 && alt < 0.05) toast('We have liftoff! 🛫', 1500);
+  const low = nAlt < 8;
+  const wedged = low && bodyCircles(car).some((c) => circleHits(c, car));
+  if (low && !wedged && bodyCircles(car, nx, nz, h).some((c) => circleHits(c, car))) {
+    if (nAlt < 0.05) { // bumped into something on the ground
+      if (Math.abs(drive.v) > 2.5) tone(110, 0.15, 'square', 0.07, 0.6);
+      drive.v = -drive.v * 0.2;
+    } else { nAlt += 6 * dt; drive.pitch = Math.max(drive.pitch, 0.2); } // pull up over it!
+    car.position.y = ud.baseY + nAlt;
+  } else {
+    car.position.set(nx, ud.baseY + nAlt, nz);
+    car.rotation.y = h; ud.rotY = h;
+  }
+  car.rotation.x = -drive.pitch;
+  car.rotation.z = drive.roll;
+  car.updateMatrixWorld(true);
+  // engine hum
+  drive.hum -= dt;
+  if (drive.hum <= 0 && !audio.muted()) { drive.hum = 0.24; tone(70 + drive.v * 3 + thr * 10, 0.28, jet ? 'triangle' : 'sawtooth', jet ? 0.03 : 0.018, 1.02); }
+  sitInVehicle(car, dt, 0.25);
+}
+// ---------- driving boats on the Great Lake ----------
+function updateBoat(dt) {
+  const car = driving, ud = car.userData, clamp = THREE.MathUtils.clamp;
+  car.rotation.order = 'YXZ';
+  const f = clamp((keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + padIn.rt - padIn.lt - padIn.ly, -1, 1);
+  const st = clamp((keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + padIn.lx, -1, 1);
+  const max = (ud.type === 'pontoon' ? 7 : 12) * (keys.ShiftLeft || keys.ShiftRight ? 1.25 : 1);
+  if (f > 0) drive.v += 4 * dt; else if (f < 0) drive.v -= 3.5 * dt;
+  else { drive.v *= Math.exp(-dt * 0.7); if (Math.abs(drive.v) < 0.05) drive.v = 0; }
+  drive.v = clamp(drive.v, -3, max);
+  const h = car.rotation.y - st * dt * 0.8 * clamp(Math.abs(drive.v) / 2.5, 0, 1) * Math.sign(drive.v || 1);
+  const nx = car.position.x + Math.sin(h) * drive.v * dt, nz = car.position.z + Math.cos(h) * drive.v * dt;
+  const okAt = (x, z, hh) => bodyCircles(car, x, z, hh).every((c) => world.places.boatOk(c.x, c.z, c.r * 0.85)) &&
+    !items.some((o) => o !== car && o.userData.vehicle === 'boat' && bodyCircles(o).some((oc) => bodyCircles(car, x, z, hh).some((c) => (c.x - oc.x) ** 2 + (c.z - oc.z) ** 2 < (c.r + oc.r) ** 2)));
+  const stuck = !okAt(car.position.x, car.position.z, car.rotation.y);
+  if (!stuck && !okAt(nx, nz, h)) {
+    if (Math.abs(drive.v) > 2) { noise(0.3, 0.06, 600); look.burst(new THREE.Vector3(nx, 0.4, nz), 10); }
+    drive.v = -drive.v * 0.25;
+  } else { car.position.x = nx; car.position.z = nz; car.rotation.y = h; ud.rotY = h; }
+  const t = performance.now() / 1000;
+  car.position.y = ud.baseY - 0.22 + Math.sin(t * 2.2) * 0.05;
+  car.rotation.x = -Math.min(Math.abs(drive.v), 12) * 0.012 + Math.sin(t * 1.7) * 0.015;
+  car.rotation.z = st * Math.min(1, Math.abs(drive.v) / 6) * 0.08 + Math.sin(t * 1.3) * 0.02;
+  car.updateMatrixWorld(true);
+  // splashy wake behind fast boats
+  drive.wake -= dt;
+  if (drive.wake <= 0 && Math.abs(drive.v) > 3) { drive.wake = 0.18; look.burst(new THREE.Vector3(car.position.x - Math.sin(h) * ud.hz, 0.15, car.position.z - Math.cos(h) * ud.hz), 4); }
+  drive.hum -= dt;
+  if (drive.hum <= 0 && Math.abs(drive.v) > 0.3 && !audio.muted()) { drive.hum = 0.3; tone(60 + Math.abs(drive.v) * 6, 0.32, 'sawtooth', 0.015, 1.02); }
+  sitInVehicle(car, dt, 0.18);
+}
+// put the driver in the seat; the camera swings back behind when you're not using the mouse
+function sitInVehicle(car, dt, wantPitch) {
+  const seat = seatOf(car);
+  player.pos.set(seat.x, seat.y, seat.z);
+  player.facing = car.rotation.y;
+  player.speed = 0;
+  if (performance.now() - drive.lastMouse > 1500 && Math.abs(drive.v) > 0.5) {
+    player.yaw += wrapAngle(car.rotation.y + (drive.v < 0 ? 0 : Math.PI) - player.yaw) * Math.min(1, dt * 2.5);
+    player.pitch += (-wantPitch - player.pitch) * Math.min(1, dt * 2);
+  }
+}
+
 function updateDriving(dt) {
+  if (driving.userData.vehicle === 'plane') { updatePlane(dt); return; }
+  if (driving.userData.vehicle === 'boat') { updateBoat(dt); return; }
   const car = driving, ud = car.userData;
   const f = THREE.MathUtils.clamp((keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + padIn.rt - padIn.lt - padIn.ly, -1, 1);
   const st = THREE.MathUtils.clamp((keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + padIn.lx, -1, 1);
@@ -1049,6 +1182,7 @@ const quiz = setupQuiz({
     for (let i = 0; i < 6; i++) setTimeout(() => look.burst(player.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2, 1.4, (Math.random() - 0.5) * 2)), 24), i * 200);
   },
   onClose: () => closeQuiz(),
+  onFinish: () => jobs.did('lesson'),
 });
 // ---------- the movie at PepCity Cinema (plays when you sit in a theater seat) ----------
 const MOVIE = 'https://www.youtube.com/embed/2z3r2FucYEQ?autoplay=1&rel=0&modestbranding=1&playsinline=1';
@@ -1087,6 +1221,94 @@ function openStory() {
   if (document.pointerLockElement) document.exitPointerLock();
   story.open();
 }
+// ---------- celebrate! ----------
+function celebrate() {
+  chime([523, 659, 784, 1047, 1319]);
+  for (let i = 0; i < 6; i++) setTimeout(() => look.burst(player.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2, 1.4, (Math.random() - 0.5) * 2)), 24), i * 200);
+}
+
+// ---------- jobs and chores ----------
+const HOUSES = ['home', 'dream', 'blue', 'yellow'];
+const jobs = setupJobs({
+  scene, $, player, store, toast, celebrate,
+  chime: () => chime([660, 880, 1100]),
+  close: () => play(),
+  blocked: (x, z) => !!blocked(x, z),
+  hasPet: () => pets.has(),
+  person: (name) => folks.byName(name),
+  talk: (f, text) => folks.talk(f, character.name, player.pos, text, 'happy'),
+  houseDoors: () => world.doors.filter((d) => d.exterior && HOUSES.includes(d.building) && d.kind !== 'garage')
+    .map((d) => ({ x: d.x, z: d.z, title: world.buildings.find((b) => b.id === d.building)?.title ?? 'house' }))
+    .filter((d, i, all) => all.findIndex((o) => o.title === d.title) === i),
+  knock: (d) => { if (!sfx('doorbell', d)) { tone(880, 0.3, 'sine', 0.1, 1); tone(660, 0.4, 'sine', 0.1, 1, 0.3); } },
+  pickupSound: () => tone(900, 0.08, 'triangle', 0.08, 1.4),
+  burst: (p) => look.burst(p, 12),
+});
+function openJobs() { openOverlay('jobs'); jobs.openBoard(); }
+$('jobsBtn').onclick = () => openJobs();
+
+// ---------- your pet ----------
+const pets = setupPets({
+  scene, $, player, store, toast,
+  chime: () => chime([660, 880, 1100]),
+  close: () => play(),
+  job: (id, n) => jobs.did(id, n),
+  burst: (p) => look.burst(p, 16),
+  spend: (n) => jobs.spend(n),
+  sound: (kind, pos) => {
+    if (sfx(kind, pos)) return;
+    if (kind === 'dog') { tone(380, 0.12, 'square', 0.06, 0.7); tone(340, 0.14, 'square', 0.06, 0.7, 0.18); }
+    else if (kind === 'cat') tone(700, 0.5, 'triangle', 0.06, 0.6);
+    else if (kind === 'bunny') tone(1400, 0.08, 'sine', 0.05, 1.3);
+    else if (kind === 'crunch') for (let i = 0; i < 5; i++) noise(0.05, 0.05, 2500, i * 0.12);
+    else if (kind === 'bath') noise(1.5, 0.05, 3500);
+  },
+});
+
+// ---------- tag and hide & seek with the neighborhood kids ----------
+const games = setupGames({
+  scene, $, player, toast, celebrate,
+  chime: () => chime([660, 880, 1100]),
+  blocked: (x, z) => !!blocked(x, z),
+  speak: (text, k) => speak(text, k),
+  job: (id) => jobs.did(id),
+  burst: (p) => look.burst(p, 18),
+  looking: () => hoverKid,
+  tagSound: () => { tone(900, 0.1, 'square', 0.06, 1.5); tone(1200, 0.12, 'square', 0.05, 1.3, 0.1); },
+  countSound: (n) => tone(500 + n * 40, 0.12, 'sine', 0.07, 1),
+  foundSound: () => chime([784, 988, 1175]),
+  giggle: (pos) => { if (Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z) < 30) for (let i = 0; i < 4; i++) tone(1100 + i * 80, 0.07, 'sine', 0.05, 1.2, i * 0.09); },
+  // good places to hide: behind big things and trees near the playground
+  hideSpots: (cx, cz, R) => {
+    const out = [];
+    const tryBehind = (x, z, r) => {
+      const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz) || 1;
+      const sx = x + (dx / d) * (r + 0.7), sz = z + (dz / d) * (r + 0.7);
+      const onRoad = world.loop.pts.some(([px, pz]) => (px - sx) ** 2 + (pz - sz) ** 2 < 25); // no hiding where cars drive!
+      if (!onRoad && !blocked(sx, sz) && !roomAt(sx, sz)) out.push({ x: sx, z: sz });
+    };
+    for (const it of items) {
+      const u = it.userData;
+      if (Math.max(u.hx, u.hz) < 0.45 || u.baseY + it.position.y > 0.5 || roomAt(it.position.x, it.position.z)) continue;
+      if (Math.hypot(it.position.x - cx, it.position.z - cz) < R) tryBehind(it.position.x, it.position.z, Math.max(u.hx, u.hz));
+    }
+    for (const c of world.circles) if (Math.hypot(c.x - cx, c.z - cz) < R) tryBehind(c.x, c.z, c.r);
+    return out;
+  },
+});
+let playWith = null;
+function openPlayMenu(k) {
+  if (games.playing()) { toast(games.playing() === 'tag' ? "We're playing tag! 🏃" : "We're playing hide & seek! 🔎"); return; }
+  playWith = games.playgroundOf(k);
+  $('pmTitle').textContent = `${k.def.name} wants to play! 😄`;
+  openOverlay('playmenu');
+  speak(`Hi ${character.name}! Want to play?`, k);
+}
+$('pmTag').onclick = () => { play(); games.start('tag', playWith); };
+$('pmSeek').onclick = () => { play(); games.start('seek', playWith); };
+$('pmClose').onclick = () => play();
+$('adClose').onclick = () => play();
+
 function openQuiz() {
   mode = 'quiz';
   show('quiz');
@@ -1294,6 +1516,7 @@ function blocked(x, z) {
   if (world.forest.blocked(x, z, R)) return true;
   if (world.places.blocked(x, z, R)) return true;
   if (world.funpark.blocked(x, z, R)) return true;
+  if (world.airport.blocked(x, z, R)) return true;
   for (const c of traffic.circles()) if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + R) ** 2) return true;
   const b = world.bounds;
   return x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ;
@@ -1404,7 +1627,7 @@ function updateCamera() {
 
 // ---------- looking at things ----------
 // things close enough to look at or bump the camera into (refreshed a few times a second)
-const nearby = { items: [], folks: [], big: [], rides: [], t: -1 };
+const nearby = { items: [], folks: [], big: [], rides: [], kids: [], t: -1 };
 function refreshNearby() {
   if (time - nearby.t < 0.25) return;
   nearby.t = time;
@@ -1413,10 +1636,11 @@ function refreshNearby() {
   nearby.big = nearby.items.filter((i) => i.userData.baseY + i.userData.hx > 0.6);
   nearby.folks = folks.meshes.filter((m) => Math.abs(m.position.x - p.x) < r && Math.abs(m.position.z - p.z) < r);
   nearby.rides = p.z > 80 ? world.funpark.clickables : [];
+  nearby.kids = games.meshes().filter((m) => Math.abs(m.position.x - p.x) < r + 8 && Math.abs(m.position.z - p.z) < r + 8);
 }
 function updateInteraction() {
   refreshNearby();
-  hoverDoor = hoverFolk = hoverFan = hoverRide = null;
+  hoverDoor = hoverFolk = hoverFan = hoverRide = hoverKid = null; hoverPet = false;
   if (parkRide) {
     hovered = null;
     look.setOutline(null, false);
@@ -1443,6 +1667,14 @@ function updateInteraction() {
     hovered = null;
     look.setOutline(null, false);
     $('crosshair').classList.remove('active');
+    const v = driving.userData.vehicle;
+    if (v === 'plane') {
+      const alt = driving.position.y - driving.userData.baseY, TO = driving.userData.type === 'jet' ? 17 : 13;
+      const tip = alt < 0.05 ? (drive.v < TO ? ' · 🛫 Hold <kbd>W</kbd> to speed up for takeoff!' : ' · ✨ Fast enough! Press <kbd>Space</kbd> to lift off!') : ` · ⬆️ ${Math.round(alt)} m up`;
+      setHint(`Flying the <b>${driving.userData.name}</b> — <kbd>W</kbd> faster · <kbd>S</kbd> slower · <kbd>A</kbd><kbd>D</kbd> turn · <kbd>Space</kbd> up · <kbd>Shift</kbd> down · <kbd>E</kbd> get out${tip}`);
+      return;
+    }
+    if (v === 'boat') { setHint(`Driving the <b>${driving.userData.name}</b> — <kbd>W</kbd> go · <kbd>S</kbd> slow down · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>Right-click</kbd> honk · <kbd>E</kbd> get out (by a dock)`); return; }
     setHint(`Driving the <b>${driving.userData.name}</b> — <kbd>W</kbd> go · <kbd>S</kbd> brake / back up · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>Right-click</kbd> honk · <kbd>E</kbd> get out`);
     return;
   }
@@ -1461,8 +1693,22 @@ function updateInteraction() {
   }
   centerRay.setFromCamera(CENTER, camera);
   centerRay.far = REACH + camDist;
-  const hit = centerRay.intersectObjects([...statics, ...nearby.items, ...world.doorParts, ...world.fanParts, ...nearby.folks, ...nearby.rides], true).find((h) => h.face);
+  const hit = centerRay.intersectObjects([...statics, ...nearby.items, ...world.doorParts, ...world.fanParts, ...nearby.folks, ...nearby.rides, ...pets.meshes(), ...nearby.kids], true).find((h) => h.face);
   hovered = hit ? findItem(hit.object) : null;
+  hoverPet = !!hit && pets.isMine(hit.object);
+  if (hoverPet) {
+    look.setOutline(null, false);
+    $('crosshair').classList.add('active');
+    setHint(`<b>${pets.name()}</b> — <kbd>Right-click</kbd> take care of your pet 💖`);
+    return;
+  }
+  hoverKid = hit ? games.find(hit.object) : null;
+  if (hoverKid) {
+    look.setOutline(null, false);
+    $('crosshair').classList.add('active');
+    setHint(games.hint(hoverKid));
+    return;
+  }
   if (hit?.object.userData.door) {
     hoverDoor = hit.object.userData.door;
     look.setOutline(null, false);
@@ -1525,9 +1771,16 @@ function toast(msg, ms = 2000) {
 }
 
 let mode = 'start';
+const OVERLAYS = ['start', 'pause', 'catalog', 'creator', 'quiz', 'story', 'movie', 'adopt', 'petpanel', 'jobs', 'playmenu'];
+const SIMPLE_OVERLAYS = ['adopt', 'petpanel', 'jobs', 'playmenu']; // little cards: Esc or Ⓑ closes them
+function openOverlay(id) {
+  mode = id;
+  show(id);
+  if (document.pointerLockElement) document.exitPointerLock();
+}
 let usingPad = false; // true while playing with a game controller
 function show(id) {
-  for (const el of ['start', 'pause', 'catalog', 'creator', 'quiz', 'story', 'movie']) $(el).classList.toggle('hidden', el !== id);
+  for (const el of OVERLAYS) $(el).classList.toggle('hidden', el !== id);
   $('hud').classList.toggle('hidden', id !== null);
 }
 
@@ -1542,7 +1795,7 @@ function play() {
 document.addEventListener('pointerlockchange', () => {
   if (document.pointerLockElement) { mode = 'play'; show(null); return; }
   for (const k in keys) keys[k] = false;
-  if (mode === 'catalog' || mode === 'creator' || mode === 'quiz' || mode === 'story' || mode === 'movie') return;
+  if (OVERLAYS.includes(mode) && mode !== 'start' && mode !== 'pause') return;
   mode = 'pause';
   show('pause');
 });
@@ -1654,6 +1907,7 @@ $('closeCatalog').onclick = play;
 document.addEventListener('keydown', (e) => {
   if (mode === 'catalog' && (e.code === 'KeyB' || e.code === 'Escape')) { play(); return; }
   if (mode === 'movie' && e.code === 'Escape') { closeMovie(); return; }
+  if (SIMPLE_OVERLAYS.includes(mode) && (e.code === 'Escape' || (mode === 'jobs' && e.code === 'KeyJ'))) { play(); return; }
   if (mode !== 'play') return;
   if (e.code === 'F8') { teleportToFunPark(); e.preventDefault(); return; } // hidden: for testing
   keys[e.code] = true;
@@ -1678,6 +1932,7 @@ document.addEventListener('keydown', (e) => {
     case 'KeyP': paint(); break;
     case 'KeyX': case 'Delete': case 'Backspace': trash(); break;
     case 'KeyB': case 'Tab': openCatalog(); e.preventDefault(); break;
+    case 'KeyJ': openJobs(); break;
     case 'KeyV': player.firstPerson = !player.firstPerson; toast(player.firstPerson ? '👀 Seeing through your eyes' : `🧍 Seeing ${character.name}`); break;
   }
 });
@@ -1747,7 +2002,7 @@ spawnInBed();
 settleAll();
 updateStarHud();
 startNet();
-if (params.has('shot')) window.__test = { fun: world.funpark, startParkRide, rules, look, animals, audio, inter, interact, items, byId, setSwitch, player, hover: (it) => { hovered = it; }, play: () => { mode = 'play'; }, enterCar: (type) => enterCar(items.find((i) => i.userData.type === type)), keys, doors: world.doors, setDoor, folks, traffic, spawnHeld, putDown, paint: (name) => { hoverSurface = { kind: 'wall', room: world.rooms.find((r) => r.name === name) }; paint(); }, player };
+if (params.has('shot')) window.__test = { fun: world.funpark, startParkRide, rules, look, animals, audio, inter, interact, items, byId, setSwitch, player, hover: (it) => { hovered = it; }, play: () => { mode = 'play'; }, enterCar: (type) => enterCar(items.find((i) => i.userData.type === type)), keys, doors: world.doors, setDoor, folks, traffic, spawnHeld, putDown, paint: (name) => { hoverSurface = { kind: 'wall', room: world.rooms.find((r) => r.name === name) }; paint(); }, player, pets, jobs, games, drive, world, camera, openOverlay, setHoverKid: (k) => { hoverKid = k; }, openQuiz };
 
 if (params.has('shot')) show(null);
 else if (params.has('creator')) openCreator();
@@ -1820,6 +2075,7 @@ function updatePad(dt) {
   if (g.pressed(BTN.B) || g.pressed(BTN.START)) {
     if (mode === 'pause' || mode === 'catalog') play();
     else if (mode === 'movie') closeMovie();
+    else if (SIMPLE_OVERLAYS.includes(mode)) play();
     else if (mode === 'start') $('startBtn').click();
   }
 }
@@ -1881,6 +2137,10 @@ renderer.setAnimationLoop(() => {
   traffic.update(dt, obstacleCache, onHonk);
   animals.update(dt, time);
   world.places.update(dt, time, camera.position, [player.pos], farmSound);
+  world.airport.update(dt, time, camera.position);
+  pets.update(dt, time, !driving && !riding && !parkRide);
+  jobs.update(dt, time);
+  games.update(dt, time, camera.position);
   world.forest.update(dt, time, [player.pos, ...[...remotes.players.values()].map((r) => r.pos)], camera.position, woodsSound);
   updateDoors(dt);
   sendPose(dt);
