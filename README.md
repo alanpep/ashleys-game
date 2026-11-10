@@ -1,4 +1,4 @@
-# Ashley's House
+# PepCity
 
 A 3D walk-around-and-decorate game that runs in the web browser.
 
@@ -46,13 +46,15 @@ If you delete `saves/world.json`, the next player to join brings their own copy 
 - **Right-click everything!** Go down slides, swing, ride the merry-go-round, jump on the trampoline, sit on chairs, nap in beds, make the hydrant squirt, pet the dog, play the piano, flush the toilet, shoot hoops, and more. Right-click a wall to turn that room's lights on or off.
 - **Open doors**: click a door, or just walk into it. Click the garage door to roll it up. Shop doors open by themselves.
 - **Drive**: Kenwood Ave is part of a big loop road around the whole town (Kenwood Ave, Maple Dr, Willow Way, Birch Ln), and Lessenger Ln leads up to the school parking lot. Click a car or the school bus to get in. W goes, S brakes and backs up, A and D steer, E gets out.
+- **Math time**: sit at a desk in the classroom and Ms. Lopez asks first-grade math questions (adding, taking away, counting, bigger numbers, what comes next). Click the right answer to earn stars.
 - **Visit Lessenger Elementary**: a classroom, art room, library, office, lockers, and a playground with a basketball hoop.
 - **Meet the neighbors**: people walk around town. Click them to say hi. Cars drive up and down Kenwood Ave and stop for you.
 - **Around town**: the Fire Station (fire pole, alarm bell, fire truck), the Police Station (police car), Kenwood Market (checkout gives snacks, shopping carts), the Office Tower (elevator, computers), Pizza Palace (the oven makes pizza), the Pet Shop (adopt a pet!), and Kenwood Pool (swim, and use the diving board).
 - **Vehicles**: the family's white pickup truck and white SUV at home, plus a minivan, ice cream truck (plays a song when you honk), fire truck and police car (sirens).
 - **Animals**: pets wander around, dogs come say hi, wild bunnies hop around the yards, and birds fly off when you get close.
+- **More places**: the Hospital (checkups, an X-ray room, an ambulance), the Library (storybooks read out loud), PepCity Cinema (popcorn and a movie), PepCity Farm out west (barn, tractor, animals, cornfield, pumpkin patch), and the Great Lake Beach out east (sand, wading, a pier and lighthouse, sailboats).
 - **Kenwood Woods**: trails start behind your house, behind the Blue House, and at the Secret Garden. Find the treehouse (climb it!), the campsite, the Fairy Ring, Owl Hollow, the Frog Pond, the Deer Meadow, berry bushes, and a hidden treasure chest. Watch for deer, foxes, squirrels, owls, frogs, turtles and fireflies.
-- **Find all 21 golden stars** hidden around the neighborhood to unlock the Golden Crown. To hunt for them again, use **Reset my stars** in the Esc menu.
+- **Find all 26 golden stars** hidden around the neighborhood to unlock the Golden Crown. To hunt for them again, use **Reset my stars** in the Esc menu.
 
 ## Changing the house
 

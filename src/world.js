@@ -5,7 +5,8 @@ import { HOUSE } from './house.js';
 import { BUILDINGS, AREAS, ZONES, STARS, WORLD_BOUNDS, LOOP, ROAD_WIDTH, POOLS } from './neighborhood.js';
 import { makeLoop } from './roads.js';
 import { buildForest } from './forest.js';
-import { WOODS } from './neighborhood.js';
+import { WOODS, FARM, BEACH } from './neighborhood.js';
+import { buildPlaces } from './places.js';
 import { tex } from './textures.js';
 import { P } from './palette.js';
 import { mergeStatic, remap } from './merge.js';
@@ -47,6 +48,7 @@ export function buildWorld() {
   const hillMat = [std('#86b96b'), std('#7aae62'), std('#93c278')];
   for (let i = 0; i < 26; i++) {
     const a = (i / 26) * Math.PI * 2, r = 205 + (i % 3) * 15;
+    if (Math.cos(a) > 0.35) continue; // no hills out east: that's the Great Lake
     const hill = new THREE.Mesh(new THREE.SphereGeometry(30 + (i % 4) * 8, 20, 12), hillMat[i % 3]);
     hill.position.set(8 + Math.cos(a) * r, -12, -12 + Math.sin(a) * r);
     hill.scale.y = 0.55;
@@ -179,8 +181,13 @@ export function buildWorld() {
     [52, 6, 'round', 1.2], [56, -4], [48, 18, 'pine'], [62, 15, 'round', 1.1], [54, 27, 'pine'],
     [-20, 18], [-8, 22, 'pine'], [10, 23], [26, 20, 'autumn'], [38, 24, 'round', 1.1],
   ];
-  // Kenwood Woods: the big forest all around town
+  // Kenwood Woods: the big forest all around town (but not on the farm or the beach)
+  for (const r of WOODS.clearRects) keepClear.push(r);
   const forest = buildForest(W, WOODS, { loop, keepClear, bounds: WORLD_BOUNDS });
+  // the farm and the beach
+  const places = buildPlaces(W, { FARM, BEACH, loop });
+  group.add(places.group);
+  W.places = places;
   group.add(forest.group);
   W.forest = forest;
   // a few scattered trees inside the road loop (never on a road or the parking lot)

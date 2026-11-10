@@ -169,6 +169,64 @@ function stockedShelf(kind) {
   };
 }
 
+
+// ---------- the X-ray picture (a friendly skeleton) ----------
+function xrayPicture() {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 180;
+  const g = c.getContext('2d');
+  g.fillStyle = '#16304a'; g.fillRect(0, 0, 256, 180);
+  g.strokeStyle = '#e9f6ff'; g.fillStyle = '#e9f6ff'; g.lineWidth = 6; g.lineCap = 'round';
+  g.beginPath(); g.arc(128, 34, 18, 0, 7); g.fill();                     // skull
+  g.fillStyle = '#16304a'; g.beginPath(); g.arc(121, 31, 4, 0, 7); g.arc(135, 31, 4, 0, 7); g.fill(); g.fillStyle = '#e9f6ff';
+  g.beginPath(); g.moveTo(128, 54); g.lineTo(128, 120); g.stroke();       // spine
+  for (let i = 0; i < 4; i++) { g.beginPath(); g.ellipse(128, 70 + i * 11, 24 - i * 2, 4, 0, 0, Math.PI); g.stroke(); } // ribs
+  g.beginPath(); g.moveTo(128, 62); g.lineTo(94, 92); g.lineTo(82, 124); g.moveTo(128, 62); g.lineTo(162, 92); g.lineTo(174, 124); g.stroke(); // arms
+  g.beginPath(); g.moveTo(128, 120); g.lineTo(108, 172); g.moveTo(128, 120); g.lineTo(148, 172); g.stroke(); // legs
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// ---------- clocks ----------
+function clockFace() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fbfaf7'; g.fillRect(0, 0, 256, 256);
+  g.fillStyle = '#34302f'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = "bold 34px 'Baloo 2', sans-serif";
+  for (let i = 1; i <= 12; i++) { const a = (i / 12) * Math.PI * 2; g.fillText(String(i), 128 + Math.sin(a) * 96, 132 - Math.cos(a) * 96); }
+  for (let i = 0; i < 60; i++) { const a = (i / 60) * Math.PI * 2, r1 = i % 5 ? 118 : 112; g.fillRect(128 + Math.sin(a) * r1 - 1.5, 128 - Math.cos(a) * r1 - 1.5, 3, 3); }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+// a glowing screen that shows the real time (it redraws itself when the minute changes)
+function digitalScreen() {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 96;
+  const g = c.getContext('2d');
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.MeshBasicMaterial({ map: t });
+  let shown = '';
+  m.userData.draw = () => {
+    const d = new Date();
+    let h = d.getHours() % 12; if (!h) h = 12;
+    const text = `${h}:${String(d.getMinutes()).padStart(2, '0')}`, colon = d.getSeconds() % 2 === 0;
+    const key = text + colon;
+    if (key === shown) return;
+    shown = key;
+    g.fillStyle = '#101418'; g.fillRect(0, 0, 256, 96);
+    g.fillStyle = '#ff5a4d'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = "bold 70px 'Courier New', monospace";
+    g.fillText(colon ? text : text.replace(':', ' '), 118, 52);
+    g.font = "bold 22px sans-serif"; g.fillText(d.getHours() < 12 ? 'AM' : 'PM', 228, 76);
+    t.needsUpdate = true;
+  };
+  m.userData.draw();
+  return m;
+}
+
 // ---------- the catalog ----------
 export const CATALOG = [
   // ---- Furniture ----
@@ -405,13 +463,31 @@ export const CATALOG = [
       b.ball(0.025, x, y - 0.01, 0.034, '#c08a6a').scale.z = 0.2;
     });
   } },
-  { id: 'clock', name: 'Clock', emoji: '🕰️', cat: 'Wall Stuff', wall: true, color: '#34302f', build: (b) => {
+  // a clock with numbers that shows the real time
+  { id: 'clock', name: 'Clock', emoji: '🕰️', cat: 'Wall Stuff', wall: true, color: '#34302f', animate: (g) => {
+    const d = new Date(), h = (d.getHours() % 12) + d.getMinutes() / 60, m = d.getMinutes() + d.getSeconds() / 60;
+    const hh = g.getObjectByName('hour'), mm = g.getObjectByName('minute'), ss = g.getObjectByName('second');
+    if (hh) hh.rotation.z = -(h / 12) * Math.PI * 2;
+    if (mm) mm.rotation.z = -(m / 60) * Math.PI * 2;
+    if (ss) ss.rotation.z = -(d.getSeconds() / 60) * Math.PI * 2;
+  }, build: (b) => {
     b.disc(0.22, 0.03, 0, 0, 0.015, MAIN);
-    b.disc(0.195, 0.01, 0, 0, 0.035, WHITE);
-    b.box(0.015, 0.14, 0.006, 0, 0, 0.05, BLACK);
-    b.box(0.1, 0.015, 0.006, 0.05, -0.0075, 0.056, BLACK);
-    for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; b.box(0.012, 0.012, 0.006, Math.sin(a) * 0.17, Math.cos(a) * 0.17 - 0.006, 0.046, BLACK); }
+    b.add(new THREE.CircleGeometry(0.197, 40), new THREE.MeshStandardMaterial({ map: clockFace(), roughness: 0.6 }), 0, 0, 0.037).name = 'face';
+    const hour = b.sub('hour', 0, 0, 0.042); hour.box(0.016, 0.095, 0.005, 0, -0.012, 0, BLACK);
+    const minute = b.sub('minute', 0, 0, 0.048); minute.box(0.011, 0.145, 0.005, 0, -0.015, 0, BLACK);
+    const second = b.sub('second', 0, 0, 0.054); second.box(0.004, 0.16, 0.004, 0, -0.03, 0, '#d9443a');
+    b.ball(0.012, 0, 0, 0.058, BLACK);
   } },
+  { id: 'digitalclock', name: 'Digital Clock', emoji: '⏰', cat: 'Wall Stuff', wall: true, color: '#2a2727', animate: (g) => {
+    const s = g.getObjectByName('screen');
+    if (s) s.userData.draw?.();
+  }, build: (b) => {
+    b.box(0.6, 0.26, 0.05, 0, -0.13, 0.025, MAIN);
+    const screen = b.add(new THREE.PlaneGeometry(0.54, 0.2), digitalScreen(), 0, 0, 0.057);
+    screen.name = 'screen';
+    screen.userData.draw = screen.material.userData.draw;
+  } },
+
   { id: 'poster', name: 'Poster', emoji: '⭐', cat: 'Wall Stuff', wall: true, color: '#bba6e6', build: (b) => {
     b.box(0.5, 0.7, 0.01, 0, -0.35, 0.005, MAIN);
     b.ball(0.12, 0, 0.06, 0.012, '#f7da7e').scale.z = 0.05;
@@ -1225,6 +1301,28 @@ export const CATALOG = [
     for (const [x, y, z, r] of [[0, 0.35, 0, 0.45], [0.3, 0.3, 0.2, 0.32], [-0.3, 0.3, -0.15, 0.34], [0.05, 0.6, -0.1, 0.3]]) b.ball(r, x, y, z, '#3f7a3a');
     for (let i = 0; i < 16; i++) { const a = i * 2.4, y = 0.25 + (i % 4) * 0.12; b.ball(0.04, Math.cos(a) * 0.42, y, Math.sin(a) * 0.38, MAIN); }
   } },
+  { id: 'cerealdisplay', name: 'Cereal Display', emoji: '🥣', cat: 'Furniture', color: '#f2a25f', action: 'give', gives: ['cereal', 'cerealbowl'], giveMsg: 'Breakfast time! 🥣', giveLabel: 'grab some cereal', build: (b) => {
+    b.box(1.5, 0.5, 0.7, 0, 0, 0, '#fbfaf7');
+    const cols = ['#f2a25f', '#ef84ad', '#f7da7e', '#93c9ea', '#aee0c5', '#d9443a'];
+    let n = 0;
+    for (const [row, y, count] of [[0, 0.5, 5], [1, 0.82, 4], [2, 1.14, 3]]) for (let i = 0; i < count; i++) {
+      const x = (i - (count - 1) / 2) * 0.27;
+      b.box(0.24, 0.32, 0.12, x, y, 0.1 - row * 0.05, cols[n++ % cols.length]);
+      b.box(0.14, 0.12, 0.005, x, y + 0.15, 0.163 - row * 0.05, '#fbfaf7');
+      b.ball(0.035, x, y + 0.21, 0.165 - row * 0.05, '#f7da7e').scale.z = 0.3;
+    }
+    const sign = new THREE.MeshStandardMaterial({ map: signTexture('CEREAL', '#f2a25f', '#ffffff'), roughness: 0.6 });
+    b.box(0.04, 0.9, 0.04, -0.7, 0.5, -0.3, '#c9ccd1'); b.box(0.04, 0.9, 0.04, 0.7, 0.5, -0.3, '#c9ccd1');
+    b.box(1.4, 0.32, 0.03, 0, 1.5, -0.3, sign);
+    for (const x of [-0.45, 0.45]) { b.cyl(0.11, 0.08, 0.07, x, 0.5, 0.25, '#fbfaf7'); b.cyl(0.1, 0.1, 0.005, x, 0.565, 0.25, '#fbfaf7'); for (let k = 0; k < 6; k++) b.ball(0.018, x + Math.cos(k) * 0.05, 0.575, 0.25 + Math.sin(k) * 0.05, cols[k]); }
+  } },
+  { id: 'cerealbowl', name: 'Bowl of Cereal', emoji: '🥣', cat: 'Kitchen & Bath', color: '#93c9ea', build: (b) => {
+    b.cyl(0.12, 0.08, 0.08, 0, 0, 0, MAIN);
+    b.cyl(0.108, 0.108, 0.005, 0, 0.07, 0, '#fbfaf7');
+    const cols = ['#f2a25f', '#ef84ad', '#f7da7e', '#aee0c5', '#bba6e6'];
+    for (let k = 0; k < 10; k++) b.add(new THREE.TorusGeometry(0.014, 0.007, 6, 10), cols[k % 5], Math.cos(k * 2.4) * (0.02 + (k % 3) * 0.025), 0.078, Math.sin(k * 2.4) * (0.02 + (k % 3) * 0.025)).rotation.x = Math.PI / 2;
+    b.box(0.015, 0.008, 0.13, 0.05, 0.085, 0.02, '#c9ccd1').rotation.y = 0.4;
+  } },
   { id: 'berries', name: 'Berries', emoji: '🫐', cat: 'Kitchen & Bath', color: '#4f86c6', build: (b) => {
     b.cyl(0.12, 0.09, 0.08, 0, 0, 0, '#c9a77c');
     for (let i = 0; i < 9; i++) { const a = i * 2.2, r = (i % 3) * 0.04; b.ball(0.03, Math.cos(a) * r, 0.09 + (i % 2) * 0.02, Math.sin(a) * r, i % 4 ? MAIN : '#d9443a'); }
@@ -1235,6 +1333,121 @@ export const CATALOG = [
     b.box(0.36, 0.03, 0.36, 0, 1.82, 0, '#fbfaf7').rotation.z = 0.0;
     b.disc(0.05, 0.01, 0, 1.7, 0.145, '#2a2727');
     b.box(0.02, 0.02, 0.08, 0, 1.6, 0.17, '#8a6a3a');
+  } },
+
+  // ---- Hospital ----
+  { id: 'exambed', name: 'Exam Bed', emoji: '🩺', cat: 'Furniture', color: '#93c9ea', build: (b) => {
+    b.box(0.8, 0.6, 1.9, 0, 0, 0, '#e8e8ee');
+    b.box(0.82, 0.12, 1.92, 0, 0.6, 0, MAIN);
+    b.box(0.82, 0.12, 0.6, 0, 0.72, -0.62, MAIN).rotation.x = -0.35;
+    b.box(0.76, 0.01, 1.4, 0, 0.73, 0.2, WHITE);
+  } },
+  { id: 'hospitalbed', name: 'Hospital Bed', emoji: '🛏️', cat: 'Furniture', color: '#aee0c5', build: (b) => {
+    b.box(1.0, 0.08, 2.0, 0, 0.45, 0, '#c9ccd1');
+    b.legs(0.9, 1.9, 0.45, 0.05, '#c9ccd1');
+    b.box(0.95, 0.15, 1.95, 0, 0.53, 0, WHITE);
+    b.box(0.98, 0.06, 1.3, 0, 0.68, 0.3, MAIN);
+    b.box(0.6, 0.12, 0.35, 0, 0.68, -0.72, WHITE);
+    b.box(1.0, 0.5, 0.05, 0, 0.5, -1.0, '#c9ccd1'); b.box(1.0, 0.35, 0.05, 0, 0.5, 1.0, '#c9ccd1');
+    for (const x of [-0.52, 0.52]) b.box(0.03, 0.2, 0.9, x, 0.68, -0.3, '#c9ccd1');
+    b.cyl(0.015, 0.015, 1.7, 0.7, 0, -0.9, METAL); b.box(0.12, 0.18, 0.04, 0.7, 1.55, -0.9, '#cfe6f2', GLASS);
+  } },
+  { id: 'xray', name: 'X-Ray Lightbox', emoji: '🦴', cat: 'Wall Stuff', wall: true, color: '#fbfaf7', build: (b) => {
+    b.box(1.3, 0.95, 0.05, 0, -0.475, 0.025, MAIN);
+    const m = new THREE.MeshBasicMaterial({ map: xrayPicture() });
+    b.add(new THREE.PlaneGeometry(1.18, 0.83), m, 0, 0, 0.056).name = 'film';
+  } },
+  { id: 'wheelchair', name: 'Wheelchair', emoji: '♿', cat: 'Furniture', color: '#4f86c6', build: (b) => {
+    b.box(0.5, 0.06, 0.48, 0, 0.48, 0, MAIN);
+    b.box(0.5, 0.5, 0.05, 0, 0.5, -0.24, MAIN);
+    for (const x of [-0.3, 0.3]) {
+      b.add(new THREE.TorusGeometry(0.28, 0.025, 8, 24), BLACK, x, 0.3, -0.05).rotation.y = Math.PI / 2;
+      b.box(0.03, 0.3, 0.03, x * 0.9, 0.48, 0.2, METAL);
+      b.box(0.03, 0.03, 0.4, x * 0.9, 0.7, -0.05, METAL);
+    }
+    b.box(0.4, 0.03, 0.15, 0, 0.12, 0.33, METAL);
+  } },
+  { id: 'ambulance', name: 'Ambulance', emoji: '🚑', cat: 'Outside', color: '#fbfaf7', action: 'drive', seat: { x: 0.45, z: 2.0, eye: 1.6 }, mainOpts: { roughness: 0.35 }, build: (b) => {
+    b.box(2.1, 0.75, 5.8, 0, 0.4, 0, MAIN);
+    cabin(b, 2.0, 0.75, 1.3, 1.15, 2.2);
+    seats(b, 1.15, 0.45, 1.9);
+    b.box(2.12, 1.55, 3.9, 0, 1.15, -0.9, MAIN);
+    b.box(2.14, 0.16, 5.82, 0, 0.95, 0, '#d9443a');
+    for (const x of [-1.075, 1.075]) { b.box(0.012, 0.5, 0.15, x, 1.6, -0.9, '#d9443a'); b.box(0.012, 0.15, 0.5, x, 1.775, -0.9, '#d9443a'); }
+    b.box(1.6, 0.14, 0.3, 0, 2.7, 0.9, '#d9443a', { emissive: '#ff3b2f', emissiveIntensity: 0.8 });
+    b.box(1.6, 0.25, 0.03, 0, 0.6, 2.91, '#2f3238');
+    for (const x of [-0.75, 0.75]) b.ball(0.11, x, 0.85, 2.9, WHITE, { emissive: '#fff6d8', emissiveIntensity: 0.8 }).scale.z = 0.3;
+    wheels(b, 0.42, 0.32, 1.05, [-1.9, 1.9]);
+  } },
+
+  // ---- Library ----
+  { id: 'storybook', name: 'Storybook', emoji: '📖', cat: 'Toys & Pets', color: '#8a5a3a', build: (b) => {
+    b.box(0.05, 0.9, 0.05, 0, 0, 0, '#8a6a3a');
+    b.box(0.4, 0.04, 0.3, 0, 0.9, 0, '#8a6a3a').rotation.x = -0.4;
+    for (const s of [-1, 1]) {
+      b.box(0.3, 0.03, 0.38, s * 0.16, 0.98, 0.02, MAIN).rotation.set(-0.4, 0, -s * 0.12);
+      b.box(0.27, 0.015, 0.34, s * 0.15, 1.0, 0.02, '#fbfaf7').rotation.set(-0.4, 0, -s * 0.12);
+    }
+  } },
+
+  // ---- Movie theater ----
+  { id: 'theaterseat', name: 'Theater Seat', emoji: '🎬', cat: 'Furniture', color: '#c8463c', build: (b) => {
+    b.box(0.6, 0.42, 0.55, 0, 0, 0, '#2a2727');
+    b.box(0.56, 0.12, 0.5, 0, 0.36, 0.02, MAIN);
+    b.box(0.56, 0.6, 0.12, 0, 0.42, -0.22, MAIN);
+    for (const x of [-0.3, 0.3]) b.box(0.06, 0.25, 0.5, x, 0.42, 0, '#2a2727');
+  } },
+  { id: 'moviescreen', name: 'Movie Screen', emoji: '🎞️', cat: 'Wall Stuff', wall: true, color: '#2a2727', build: (b) => {
+    b.box(6.3, 3.5, 0.08, 0, -1.75, 0.04, MAIN);
+    b.box(6.0, 3.25, 0.01, 0, -1.625, 0.085, '#0e1116');
+    for (const x of [-3.4, 3.4]) b.box(0.5, 3.8, 0.1, x, -1.9, 0.1, '#7a1f2a');
+  } },
+  { id: 'popcornmachine', name: 'Popcorn Machine', emoji: '🍿', cat: 'Kitchen & Bath', color: '#d9443a', fixed: true, action: 'give', gives: ['popcorn'], giveMsg: 'Fresh popcorn! 🍿', giveLabel: 'get some popcorn', build: (b) => {
+    b.box(0.8, 0.8, 0.6, 0, 0, 0, MAIN);
+    b.box(0.76, 0.75, 0.56, 0, 0.8, 0, '#cfe6f2', GLASS);
+    for (let i = 0; i < 40; i++) b.ball(0.035, (Math.random() - 0.5) * 0.66, 0.84 + Math.random() * 0.22, (Math.random() - 0.5) * 0.46, '#fff4c4');
+    b.box(0.82, 0.12, 0.62, 0, 1.55, 0, MAIN);
+    b.cone(0.3, 0.2, 0, 1.67, 0, '#f7da7e', undefined, 16);
+  } },
+  { id: 'popcorn', name: 'Popcorn', emoji: '🍿', cat: 'Kitchen & Bath', color: '#d9443a', build: (b) => {
+    const m = new THREE.MeshStandardMaterial({ map: stripes('#d9443a', '#fbfaf7'), roughness: 0.7 });
+    m.map.repeat.set(5, 1);
+    b.add(new THREE.CylinderGeometry(0.1, 0.075, 0.2, 16, 1, true), m, 0, 0.1, 0);
+    for (let i = 0; i < 14; i++) b.ball(0.03, Math.cos(i * 2.3) * (0.03 + (i % 3) * 0.025), 0.2 + (i % 4) * 0.015, Math.sin(i * 2.3) * (0.03 + (i % 3) * 0.025), '#fff4c4');
+  } },
+
+  // ---- Farm ----
+  { id: 'haybale', name: 'Hay Bale', emoji: '🌾', cat: 'Outside', color: '#e0c06a', build: (b) => {
+    b.box(1.0, 0.5, 0.6, 0, 0, 0, MAIN);
+    for (const x of [-0.25, 0.25]) b.box(0.03, 0.52, 0.62, x, 0, 0, '#8a6a3a');
+  } },
+  { id: 'tractor', name: 'Tractor', emoji: '🚜', cat: 'Outside', color: '#4f8a46', action: 'drive', seat: { x: 0, z: -0.4, eye: 1.95 }, build: (b) => {
+    b.box(1.0, 0.7, 2.2, 0, 0.55, 0.2, MAIN);
+    b.box(0.9, 0.12, 0.8, 0, 1.25, -0.45, MAIN);
+    b.box(0.5, 0.45, 0.1, 0, 1.37, -0.8, '#2a2727');
+    b.cyl(0.06, 0.06, 0.7, 0.3, 1.25, 0.9, '#2a2727');
+    b.cyl(0.14, 0.14, 0.03, 0, 1.65, -0.15, BLACK).rotation.x = 1.0;
+    for (const x of [-0.75, 0.75]) {
+      b.add(new THREE.CylinderGeometry(0.7, 0.7, 0.4, 24), BLACK, x, 0.7, -0.5).rotation.z = Math.PI / 2;
+      b.add(new THREE.CylinderGeometry(0.35, 0.35, 0.42, 16), '#f2cf63', x, 0.7, -0.5).rotation.z = Math.PI / 2;
+      b.add(new THREE.CylinderGeometry(0.38, 0.38, 0.28, 18), BLACK, x * 0.85, 0.38, 1.0).rotation.z = Math.PI / 2;
+      b.add(new THREE.CylinderGeometry(0.18, 0.18, 0.3, 12), '#f2cf63', x * 0.85, 0.38, 1.0).rotation.z = Math.PI / 2;
+    }
+    b.ball(0.08, 0.3, 1.0, 1.31, WHITE, { emissive: '#fff6d8', emissiveIntensity: 0.6 }).scale.z = 0.4;
+    b.ball(0.08, -0.3, 1.0, 1.31, WHITE, { emissive: '#fff6d8', emissiveIntensity: 0.6 }).scale.z = 0.4;
+  } },
+  { id: 'pumpkin', name: 'Pumpkin', emoji: '🎃', cat: 'Outside', color: '#f2a25f', build: (b) => {
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; b.ball(0.16, Math.cos(a) * 0.08, 0.17, Math.sin(a) * 0.08, MAIN).scale.set(0.75, 1, 0.75); }
+    b.cyl(0.025, 0.035, 0.12, 0, 0.3, 0, '#5a7a3a');
+  } },
+
+  // ---- Beach ----
+  { id: 'sandcastle', name: 'Sandcastle', emoji: '🏰', cat: 'Outside', color: '#e9d39a', build: (b) => {
+    b.box(0.9, 0.25, 0.9, 0, 0, 0, MAIN);
+    for (const [x, z] of [[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]]) { b.cyl(0.12, 0.14, 0.4, x, 0.25, z, MAIN, undefined, 10); b.cone(0.13, 0.15, x, 0.65, z, MAIN, undefined, 10); }
+    b.cyl(0.18, 0.2, 0.55, 0, 0.25, 0, MAIN, undefined, 12);
+    b.cone(0.2, 0.2, 0, 0.8, 0, MAIN, undefined, 12);
+    b.box(0.01, 0.2, 0.01, 0, 1.0, 0, '#8a6a3a'); b.box(0.12, 0.07, 0.005, 0.06, 1.13, 0, '#ef84ad');
   } },
 ];
 

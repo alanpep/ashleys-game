@@ -6,7 +6,7 @@ import { bubble } from './townsfolk.js';
 import { tone, noise, melody } from './sound.js';
 
 // Things that stay on or off (saved, and shared with the other player). value = starts on?
-const TOGGLES = { tv: false, walltv: false, floorlamp: true, tablelamp: true, lights: true, streetlamp: true, stove: false, firepit: false, computer: true };
+const TOGGLES = { tv: false, walltv: false, floorlamp: true, tablelamp: true, lights: true, streetlamp: true, stove: false, firepit: false, computer: true, moviescreen: true };
 export const isToggle = (type) => type in TOGGLES;
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -161,7 +161,7 @@ export function setupInteractions(ctx) {
     for (let i = 0; i < 3; i++) { g.fillStyle = ['#ef84ad', '#bba6e6', '#f7da7e'][i]; g.beginPath(); g.arc(40 + i * 60 + Math.sin(t * 2 + i) * 10, 40 + Math.cos(t * 1.5 + i) * 8, 8, 0, 7); g.fill(); }
     tvTex.needsUpdate = true;
   }
-  const SCREENS = { tv: { w: 1.24, h: 0.69, x: 0, y: 0.935, z: 0.038 }, walltv: { w: 1.54, h: 0.86, x: 0, y: 0, z: 0.068 } };
+  const SCREENS = { tv: { w: 1.24, h: 0.69, x: 0, y: 0.935, z: 0.038 }, walltv: { w: 1.54, h: 0.86, x: 0, y: 0, z: 0.068 }, moviescreen: { w: 5.95, h: 3.2, x: 0, y: 0, z: 0.1 } };
 
   function glow(it, on) {
     const ud = it.userData;
@@ -245,6 +245,7 @@ export function setupInteractions(ctx) {
     schooldesk: { y: 0.415, z: -0.42 }, picnictable: { y: 0.47, z: 0.6, w: 1.4, face: Math.PI },
     officechair: { y: 0.53, z: 0 }, loungechair: { y: 0.36, z: 0.1 },
     log: { y: 0.5, z: 0, w: 1.3 }, stump: { y: 0.46, z: 0 },
+    theaterseat: { y: 0.48, z: 0.02 }, wheelchair: { y: 0.51, z: 0 }, haybale: { y: 0.5, z: 0, w: 0.6 },
   };
   function sit(it) {
     const s = SEATS[it.userData.type];
@@ -305,6 +306,26 @@ export function setupInteractions(ctx) {
       end,
     };
   }
+  // sit down at a computer and type (the screen turns on, the keys click)
+  function typeAt(it) {
+    setOn(it, true, true); ctx.save();
+    const p0 = it.position.clone();
+    let click = 0;
+    active = {
+      kind: 'type', mode: 'type', it,
+      update(dt) {
+        if (!alive(it) || it.position.distanceTo(p0) > 0.01 || ctx.moving()) return false;
+        player.pos.copy(at(it, 0, 0.53 - legH() + 0.02, 0.74));
+        player.facing = it.rotation.y + Math.PI;
+        player.speed = 0;
+        click -= dt;
+        if (click <= 0) { click = 0.07 + Math.random() * 0.16; tone(1700 + Math.random() * 900, 0.02, 'square', 0.02, 1); }
+        return true;
+      },
+      exit: () => (alive(it) ? at(it, 0.9, 0, 1.0) : null),
+    };
+  }
+
   // climb the ladder, then stay up on the treehouse deck until you walk off
   function climbUp(it) {
     S.creak();
@@ -403,7 +424,37 @@ export function setupInteractions(ctx) {
     emitter(dur, 10, () => [p.clone().add(V(rand(-0.15, 0.15), 0, rand(-0.15, 0.15))), V(rand(-0.1, 0.1), 0.5, rand(-0.1, 0.1)), { color: '#ffffff', size: 0.05, life: 1.6, gravity: -0.2, opacity: 0.45, grow: 0.12 }]);
   };
   const found = (it) => { S.creak(); say(it, pick(FINDS)); };
-  const eat = (it) => { S.munch(); say(V(player.pos.x, player.pos.y + ctx.avatar().height + 0.3, player.pos.z), pick(['Yum! 😋', 'Delicious! 😋', 'Mmmm! 💖'])); ctx.remove(it); };
+  // food flies up to your mouth and disappears in three bites (or three gulps for drinks)
+  let eating = false;
+  const eat = (it, _mine, drink = false) => {
+    const ud = it.userData;
+    if (ud.eating || eating) return;
+    ud.eating = eating = true;
+    const start = it.position.clone(), s0 = it.scale.clone(), crumb = ud.color ?? '#d9a45a';
+    let bites = 0;
+    const mouth = () => {
+      const f = player.facing;
+      return V(player.pos.x + Math.sin(f) * 0.24, player.pos.y + ctx.avatar().eyeHeight - 0.17, player.pos.z + Math.cos(f) * 0.24);
+    };
+    effect(2.2, (k) => {
+      if (!alive(it)) return;
+      const m = mouth(), fly = Math.min(1, k / 0.25);
+      it.position.lerpVectors(start, m, fly * fly * (3 - 2 * fly));
+      if (drink) it.rotation.x = Math.min(1, Math.max(0, (k - 0.25) * 3)) * 1.2;
+      const want = Math.min(3, Math.max(0, Math.floor((k - 0.3) / 0.22) + 1));
+      while (bites < want) {
+        bites++;
+        it.scale.copy(s0).multiplyScalar(1 - bites / 3.2);
+        if (drink) for (let i = 0; i < 2; i++) tone(320, 0.1, 'sine', 0.08, 1.6, i * 0.12);
+        else { noise(0.08, 0.12, 3000); for (let i = 0; i < 6; i++) particle(m.clone(), V(rand(-0.6, 0.6), rand(0, 0.8), rand(-0.6, 0.6)), { color: crumb, size: 0.015, life: 0.8, opacity: 1 }); }
+      }
+      it.updateMatrixWorld(true);
+    }, () => {
+      eating = false;
+      say(V(player.pos.x, player.pos.y + ctx.avatar().height + 0.3, player.pos.z), drink ? pick(['Gulp gulp! 🥛', 'Ahhh! So good! 😋']) : pick(['Yum! 😋', 'Delicious! 😋', 'Mmmm! 💖']));
+      if (alive(it)) ctx.remove(it);
+    });
+  };
 
   // mine = I clicked it (false = replaying what the other player did)
   const DEFS = {
@@ -499,8 +550,9 @@ export function setupInteractions(ctx) {
     banana: { label: 'eat a banana', mine: true, fn: eat }, watermelon: { label: 'eat a slice', mine: true, fn: eat },
     cheese: { label: 'have a nibble', mine: true, fn: eat }, cookies: { label: 'eat a cookie', mine: true, fn: eat },
     donut: { label: 'eat it!', mine: true, fn: eat },
-    milk: { label: 'drink it', mine: true, fn: (it) => { for (let i = 0; i < 3; i++) tone(300, 0.1, 'sine', 0.08, 1.6, i * 0.2); say(V(player.pos.x, player.pos.y + ctx.avatar().height + 0.3, player.pos.z), 'Gulp gulp! 🥛'); ctx.remove(it); } },
-    juice: { label: 'drink it', mine: true, fn: (it) => { for (let i = 0; i < 3; i++) tone(300, 0.1, 'sine', 0.08, 1.6, i * 0.2); say(V(player.pos.x, player.pos.y + ctx.avatar().height + 0.3, player.pos.z), 'Slurp! 🧃'); ctx.remove(it); } },
+    milk: { label: 'drink it', mine: true, fn: (it) => eat(it, true, true) },
+    juice: { label: 'drink it', mine: true, fn: (it) => eat(it, true, true) },
+    cerealbowl: { label: 'eat it!', mine: true, fn: (it) => eat(it) },
     shelf_cereal: { label: 'grab a cereal box', mine: true, fn: () => ctx.give('cereal', 'Breakfast time! 🥣') },
     shelf_snacks: { label: 'grab a snack', mine: true, fn: () => ctx.give(pick(['cookies', 'donut', 'cheese']), 'A tasty snack! 🍪') },
     shelf_cans: { label: 'grab some food', mine: true, fn: () => ctx.give(pick(['cheese', 'bread', 'banana']), 'Into the cart! 🛒') },
@@ -528,6 +580,21 @@ export function setupInteractions(ctx) {
       }, [0, 0, 3.4], () => { if (!ctx.sfx('splash', at(it, 0, 0, 3.4))) S.splash(); look.burst(at(it, 0, 0.1, 3.4), 20); say(at(it, 0, 1.2, 3.4), 'SPLASH! 💦'); });
     } },
     umbrella: { label: 'spin it', fn: (it) => spin(it, 2, 1.5) },
+    exambed: { label: 'get a checkup', mine: true, fn: (it) => {
+      nap(it, true, [0, 0.8, 0.45]);
+      for (let i = 0; i < 4; i++) { tone(70, 0.12, 'sine', 0.2, 0.8, i * 0.8); tone(65, 0.1, 'sine', 0.16, 0.8, i * 0.8 + 0.18); }
+      say(V(it.position.x, top(it) + 0.8, it.position.z), pick(['Say ahhh! 👅', 'Your heart sounds great! 🩺', 'Deep breath in... 🫁', 'You are super healthy! 💪']), 3);
+    } },
+    hospitalbed: { label: 'rest in bed', mine: true, fn: (it) => nap(it, false, [0, 0.72, 0.6]) },
+    xray: { label: 'look at the x-ray', fn: (it) => { S.sparkle(); say(it, pick(['Look at all those bones! 🦴', 'That is a skeleton! 💀', 'You have 206 bones! 🦴'])); } },
+    storybook: { label: 'read a story', mine: true, fn: () => ctx.openStory() },
+    popcorn: { label: 'eat some popcorn', mine: true, fn: eat },
+    pumpkin: { label: 'knock on it', fn: (it) => { tone(160, 0.12, 'sine', 0.14, 0.6); hop(it, 0.1); say(it, pick(['Thunk! 🎃', 'A big pumpkin! 🎃', 'Pie time? 🥧'])); } },
+    sandcastle: { label: 'build it bigger', fn: (it) => {
+      noise(0.6, 0.06, 900); growBounce(it); say(it, pick(['A sandcastle! 🏰', 'Royal beach castle! 👑', 'Add a moat! 🌊']));
+      const p = V(it.position.x, 0.4, it.position.z);
+      emitter(0.6, 40, () => [p.clone(), V(rand(-1, 1), rand(1, 2.5), rand(-1, 1)), { color: '#e9d39a', size: 0.03, life: 0.8, opacity: 1 }]);
+    } },
     treehouse: { label: 'climb up!', mine: true, fn: (it) => climbUp(it) },
     tent: { label: 'crawl inside', mine: true, fn: (it) => nap(it, false, [0, 0.12, 0.35]) },
     mushroom: { label: 'boop the mushroom', fn: (it) => { hop(it, 0.3, 2, 0.35); tone(300, 0.25, 'sine', 0.1, 2.5); say(it, pick(['Boing! 🍄', 'Squish! 🍄', 'A magic mushroom! ✨'])); } },
@@ -536,9 +603,11 @@ export function setupInteractions(ctx) {
     berries: { label: 'eat them', mine: true, fn: eat },
     rug: { label: 'wiggle your toes', fn: (it) => { noise(0.4, 0.04, 1200); say(it, 'So soft! ☁️'); } },
   };
+  DEFS.theaterseat = { label: 'sit down and watch the movie! 🍿', mine: true, fn: (it) => { sit(it); setTimeout(() => ctx.openMovie(), 600); } };
   for (const k of Object.keys(SEATS)) if (!DEFS[k]) DEFS[k] = { label: 'sit down', mine: true, fn: sit };
   for (const k of Object.keys(TOGGLES)) DEFS[k] = { label: (it) => (it.userData.on ? 'turn off' : 'turn on'), mine: true, toggle: true, fn: (it) => { setOn(it, !it.userData.on); ctx.save(); } };
   DEFS.stove.label = (it) => (it.userData.on ? 'turn off the stove' : 'turn on the stove');
+  DEFS.computer = { label: 'type on the computer', mine: true, fn: (it) => typeAt(it) };
   DEFS.firepit.label = (it) => (it.userData.on ? 'put out the fire' : 'light a fire');
 
   function roll(it) {
@@ -575,6 +644,7 @@ export function setupInteractions(ctx) {
     busy: () => !!active,
     mode: () => active?.mode ?? null,
     activeKind: () => active?.kind ?? null,
+    activeItem: () => active?.it ?? null,
     standUp: () => finish(),
     napOn: (it) => nap(it, true),
     updatePlayer(dt, t) { if (active && !active.update(dt, t)) finish(); },
@@ -582,8 +652,15 @@ export function setupInteractions(ctx) {
     poseAvatar(ch, mode = active?.mode) {
       ch.root.rotation.order = 'YXZ';
       ch.root.rotation.x = mode === 'lie' ? -Math.PI / 2 : 0;
-      if (mode === 'sit' || mode === 'lie') { ch.parts.legL.rotation.x = ch.parts.legR.rotation.x = mode === 'sit' ? -Math.PI / 2 : 0; }
+      const p = ch.parts;
+      if (mode === 'sit' || mode === 'lie' || mode === 'type') { p.legL.rotation.x = p.legR.rotation.x = mode === 'lie' ? 0 : -Math.PI / 2; }
+      if (mode === 'type') { // tap tap tap on the keyboard
+        const t = performance.now() / 1000;
+        p.armL.rotation.x = -1.15 + Math.sin(t * 18) * 0.07; p.armR.rotation.x = -1.15 + Math.sin(t * 18 + 1.7) * 0.07;
+      }
+      if (eating && ch === ctx.avatar()) p.armR.rotation.x = -2.3; // hand up to your mouth
     },
+    isEating: () => eating,
     update(dt, t) {
       for (let i = effects.length - 1; i >= 0; i--) {
         const e = effects[i];

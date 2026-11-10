@@ -14,11 +14,14 @@ import { setupTraffic } from './traffic.js';
 import { setupAnimals } from './animals.js';
 import { setupAudio } from './audio.js';
 import { setupGamepad, BTN, PAD_HINTS } from './gamepad.js';
+import { setupQuiz } from './quiz.js';
+import { setupStory } from './story.js';
 import { PEOPLE, SAYINGS, TRAFFIC, groceryShelf } from './neighborhood.js';
 
 const WALK = 2.6, RUN = 5;
 const REACH = 6;
-const SAVE_KEY = 'house-save:' + HOUSE.title;
+const GAME_NAME = 'PepCity';
+const SAVE_KEY = "house-save:Ashley's House"; // keep the old save name so the house isn't lost
 const params = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -101,10 +104,11 @@ audio.onStart = () => {
     icecream: audio.loop('icecreamsong', { vol: 0.45, ref: 4, max: 30 }),
     woodsBirds: audio.loop('birds', { x: 5, z: 52, vol: 0.9, ref: 14, max: 45 }),
     pond: audio.loop('fountain', { x: 25, z: 50, vol: 0.35, ref: 3, max: 16 }),
+    popcorn: audio.loop('popcorn', { x: -48.8, z: -3, vol: 0.35, ref: 1.5, max: 10 }),
   };
 };
 for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, () => audio.start(), { once: false, passive: true });
-let bgTimer = 0, schoolBellIn = 40;
+let bgTimer = 0, schoolBellIn = 40, waveIn = 2;
 function updateSounds(dt) {
   audio.update(camera);
   // engine: follows the car you're driving, revs up as you go faster
@@ -131,8 +135,14 @@ function updateSounds(dt) {
   bg.fire.level(best ? 1 : 0);
   bg.fountain.level(inside ? 0.2 : 1);
   bg.woodsBirds.level(inside ? 0.2 : 1);
+  bg.popcorn.level(room?.building === 'cinema' ? (mode === 'movie' ? 0.1 : 1) : 0);
   bg.pond.level(inside ? 0.2 : 1);
   bg.classroom.level(room?.building === 'school' ? 1 : 0.15);
+  // doing math with Ms. Lopez: the classroom goes very quiet so you can hear her
+  if (mode === 'quiz' || mode === 'movie') {
+    bg.classroom.level(0.03);
+    for (const l of [bg.outside, bg.street, bg.parkBirds, bg.play1, bg.play2, bg.woodsBirds, bg.icecream]) l.level(0.05);
+  }
   // street sounds come from the closest bit of road
   let rp = null, rd = Infinity;
   for (let i = 0; i < world.loop.pts.length; i += 6) {
@@ -145,10 +155,19 @@ function updateSounds(dt) {
   const truck = traffic.cars.find((c) => c.mesh.userData.type === 'icecreamtruck');
   if (truck) bg.icecream.at(truck.x, truck.z);
   bg.icecream.level(truck ? (inside ? 0.3 : 1) : 0);
+  // waves rolling in at the beach
+  waveIn -= 0.3;
+  if (waveIn <= 0) {
+    waveIn = 3.5 + Math.random() * 2.5;
+    const d = Math.abs(player.pos.x - 113);
+    if (d < 25 && !inside) noise(2.8, 0.09 * (1 - d / 25), 1200, 0, 300);
+  }
   // the school bell rings now and then
   schoolBellIn -= 0.3;
-  if (schoolBellIn <= 0) { schoolBellIn = 150; if (Math.hypot(player.pos.x + 6.5, player.pos.z + 40) < 35) sfx('schoolbell', { x: -6.5, z: -40 }, { maxDist: 40 }); }
+  if (schoolBellIn <= 0 && mode !== 'quiz') { schoolBellIn = 150; if (Math.hypot(player.pos.x + 6.5, player.pos.z + 40) < 35) sfx('schoolbell', { x: -6.5, z: -40 }, { maxDist: 40 }); }
 }
+
+for (const r of world.rooms) if (r.dark) r.lightsOff = true; // the movie theater is dark
 
 // ---------- the player ----------
 const spawn = HOUSE.spawn;
@@ -191,6 +210,7 @@ const byId = new Map(); // every item has an id so both players agree which one 
 const animItems = new Set();
 let held = null, hovered = null, hoverSurface = null, hoverDoor = null, hoverFolk = null, hoverFan = null;
 let driving = null; // the car (or bus) you're driving
+let riding = null;  // the car a friend is driving, with you in it
 const drive = { v: 0, steer: 0, lastMouse: 0 };
 const padIn = { lx: 0, ly: 0, lt: 0, rt: 0 }; // the game controller's sticks and triggers
 const newId = () => Math.random().toString(36).slice(2, 10);
@@ -498,7 +518,7 @@ function sendPose(dt) {
   if (poseTimer < 0.08) return;
   poseTimer = 0;
   const thing = driving ?? held;
-  const p = { x: r3(player.pos.x), y: r3(player.pos.y), z: r3(player.pos.z), f: r3(player.facing), s: r3(player.speed), h: thing ? recordOf(thing) : null, d: driving ? 1 : 0, m: player.air ? 'jump' : inter.mode() };
+  const p = { x: r3(player.pos.x), y: r3(player.pos.y), z: r3(player.pos.z), f: r3(player.facing), s: r3(player.speed), h: thing ? recordOf(thing) : null, d: driving ? 1 : 0, m: player.air ? 'jump' : riding ? 'sit' : inter.mode() };
   const s = JSON.stringify(p);
   if (s === lastPose) return;
   lastPose = s;
@@ -628,7 +648,8 @@ function giveItem(type, color, msg) {
 
 function pickUp(it) {
   const friend = holderOf(it);
-  if (friend) { toast(`${friend.character?.name || 'Your friend'} is ${it.userData.action === 'drive' ? 'driving' : 'holding'} that!`); return; }
+  if (friend && it.userData.action === 'drive') { rideAlong(it, friend); return; }
+  if (friend) { toast(`${friend.character?.name || 'Your friend'} is holding that!`); return; }
   const a = it.userData.action;
   if (a === 'toggle') { toggleItem(it); save(); return; }
   if (a === 'icecream' || a === 'toy' || a === 'give') sfx('register', it.position);
@@ -636,7 +657,7 @@ function pickUp(it) {
   if (a === 'toy') { const t = pick(TOYS); giveItem(t, undefined, 'A surprise toy! 🎁'); return; }
   if (a === 'quack') { quack(it.position); fx('quack', it.position); }
   if (a === 'drive') { enterCar(it); return; }
-  if (a === 'give') { giveItem(pick(it.userData.gives), undefined, it.userData.giveMsg); return; }
+  if (a === 'give') { if (it.userData.type === 'popcornmachine') sfx('popcorn', it.position); giveItem(pick(it.userData.gives), undefined, it.userData.giveMsg); return; }
   if (it.userData.fixed) { toast("That one's stuck!"); return; }
   delete it.userData.roam; // stop wandering while you carry it
   held = it;
@@ -669,6 +690,7 @@ function jump() {
 
 function primaryAction() {
   if (inter.busy()) { inter.standUp(); return; }
+  if (riding) { getOutOfRide(); return; }
   if (driving) exitCar();
   else if (held) putDown();
   else if (hovered) pickUp(hovered);
@@ -691,13 +713,17 @@ const inter = setupInteractions({
   name: () => character.name,
   share: (it) => fx('act', it.position, undefined, { id: it.userData.uid }),
   sfx: (name, pos) => sfx(name, pos),
+  openStory: () => openStory(),
+  openMovie: () => openMovie(),
 });
 function interact() {
   if (driving) { honk(); return; }
+  if (riding) { getOutOfRide(); return; }
   if (inter.busy()) { inter.standUp(); return; }
   if (held) return;
   if (hovered) {
     const friend = holderOf(hovered);
+    if (friend && hovered.userData.action === 'drive') { rideAlong(hovered, friend); return; }
     if (friend) { toast(`${friend.character?.name || 'Your friend'} is using that!`); return; }
     inter.run(hovered);
   } else if (hoverDoor) { if (!hoverDoor.auto) setDoor(hoverDoor, !hoverDoor.open); }
@@ -782,6 +808,7 @@ function circleHits(c, ignore) {
   }
   for (const o of world.circles) if ((c.x - o.x) ** 2 + (c.z - o.z) ** 2 < (c.r + o.r) ** 2) return true;
   if (world.forest.blocked(c.x, c.z, c.r)) return true;
+  if (world.places.blocked(c.x, c.z, c.r)) return true;
   for (const o of traffic.circles()) if ((c.x - o.x) ** 2 + (c.z - o.z) ** 2 < (c.r + o.r) ** 2) return true;
   for (const it of items) {
     if (it === ignore || it.userData.action !== 'drive') continue;
@@ -819,9 +846,41 @@ function exitCar() {
   beep(330, 0.1, 'triangle');
   save();
 }
+// riding along: you sit next to the driver (on the other side of the car)
+function passengerSeat(car) {
+  const s = car.userData.seat, h = car.rotation.y, x = -s.x, z = s.z;
+  return { x: car.position.x + x * Math.cos(h) + z * Math.sin(h), z: car.position.z - x * Math.sin(h) + z * Math.cos(h), y: car.position.y - car.userData.baseY + s.eye - avatar.eyeHeight };
+}
+function rideAlong(car, friend) {
+  riding = car;
+  hovered = null;
+  player.yaw = car.rotation.y + Math.PI;
+  toast(`Riding with ${friend.character?.name || 'your friend'}! 🚗`);
+  tone(500, 0.1, 'triangle', 0.08, 1.3);
+}
+function getOutOfRide() {
+  const car = riding;
+  riding = null;
+  const ud = car.userData, h = car.rotation.y, s = ud.seat;
+  for (const [lx, lz] of [[-(ud.hx + 0.6), s.z], [ud.hx + 0.6, s.z], [0, ud.hz + 0.7], [0, -(ud.hz + 0.7)]]) {
+    const x = car.position.x + lx * Math.cos(h) + lz * Math.sin(h), z = car.position.z - lx * Math.sin(h) + lz * Math.cos(h);
+    if (!blocked(x, z)) { player.pos.set(x, 0, z); break; }
+  }
+  player.pos.y = 0;
+  beep(330, 0.1, 'triangle');
+}
+function updateRide() {
+  if (!riding.parent || !remoteHeld.has(riding.userData.uid)) { getOutOfRide(); toast('The ride is over! 👋'); return; } // the driver got out
+  const seat = passengerSeat(riding);
+  player.pos.set(seat.x, seat.y, seat.z);
+  player.facing = riding.rotation.y;
+  player.speed = 0;
+  if (performance.now() - drive.lastMouse > 1500) player.yaw += wrapAngle(riding.rotation.y + Math.PI - player.yaw) * 0.03;
+}
+
 function honkSound(type, pos) {
   if (type === 'icecreamtruck' && sfx('icecreamsong', pos)) return;
-  if (type === 'policecar' && sfx('siren2', pos, { maxDist: 45 })) return;
+  if ((type === 'policecar' || type === 'ambulance') && sfx('siren2', pos, { maxDist: 45 })) return;
   if (type === 'firetruck' && sfx('siren', pos, { maxDist: 45 })) return;
   if (type !== 'icecreamtruck' && type !== 'policecar' && type !== 'firetruck' && sfx('honk', pos)) return;
   if (type === 'icecreamtruck') { melody(['E5', 'G5', 'E5', 'C5', 'D5', 'E5', 'D5', 'C5', 'G4'], 0.18, 'square', 0.05); return; }
@@ -876,7 +935,134 @@ function updateDriving(dt) {
 }
 
 // ---------- townsfolk and traffic ----------
-const folks = setupTownsfolk(scene, PEOPLE, SAYINGS, { sound: (name, pos) => { if (near(pos, 35)) sfx(name, pos); } });
+const folks = setupTownsfolk(scene, PEOPLE, SAYINGS, { sound: (name, pos) => { if (near(pos, 35)) sfx(name, pos); }, speak: (text, f) => speak(text, f) });
+
+// ---------- talking out loud (the browser's built-in voices) ----------
+let voices = [];
+const loadVoices = () => { voices = (window.speechSynthesis?.getVoices() ?? []).filter((v) => /^en/i.test(v.lang)); };
+loadVoices();
+window.speechSynthesis?.addEventListener?.('voiceschanged', loadVoices);
+const FEMALE = /female|zira|aria|jenny|samantha|susan|hazel|libby|sonia|michelle|ana\b|emma|ava|sara|natasha|clara|catherine|karen|moira|tessa|fiona|victoria|allison|joanna|salli|kimberly|ivy/i;
+function speak(text, f) {
+  const synth = window.speechSynthesis;
+  if (!synth || audio.muted()) return;
+  const words = text.replace(/[\p{Extended_Pictographic}\u200d\ufe0f]/gu, '').replace(/\s+/g, ' ').trim();
+  if (!words) return;
+  const d = Math.hypot(f.root.position.x - player.pos.x, f.root.position.z - player.pos.z);
+  if (d > 25) return;
+  const look = f.def.look ?? {}, kid = look.age === 'kid', girl = look.body === 'girl';
+  // each person always gets the same voice and pitch (picked from their name)
+  let h = 0; for (const ch of f.def.name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const matching = voices.filter((v) => FEMALE.test(v.name) === girl);
+  const pool = matching.length ? matching : voices;
+  const u = new SpeechSynthesisUtterance(words);
+  if (pool.length) u.voice = pool[h % pool.length];
+  u.pitch = kid ? 1.5 + (h % 5) * 0.08 : girl ? 1.05 + (h % 4) * 0.08 : 0.75 + (h % 4) * 0.08;
+  u.rate = kid ? 1.1 : 0.95 + (h % 3) * 0.05;
+  u.volume = Math.max(0.15, 1 - d / 25);
+  synth.cancel(); // one person at a time
+  synth.speak(u);
+}
+
+// ---------- people who notice what you do (and how they feel about it) ----------
+const rules = { asked: false, mad: false, seconds: 0, quietAt: 0, poolAt: 0, quizDone: false, quizWait: 0 };
+
+// ---------- math time in the classroom ----------
+const quiz = setupQuiz({
+  $,
+  teacher: (text, mood) => {
+    const t = folks.byName('Ms. Lopez');
+    if (t) folks.talk(t, character.name, player.pos, text, mood ?? null);
+  },
+  chime: () => chime([660, 880, 1100]),
+  buzz: () => tone(200, 0.25, 'triangle', 0.08, 0.7),
+  celebrate: () => {
+    chime([523, 659, 784, 1047, 1319]);
+    for (let i = 0; i < 6; i++) setTimeout(() => look.burst(player.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2, 1.4, (Math.random() - 0.5) * 2)), 24), i * 200);
+  },
+  onClose: () => closeQuiz(),
+});
+// ---------- the movie at PepCity Cinema (plays when you sit in a theater seat) ----------
+const MOVIE = 'https://www.youtube.com/embed/2z3r2FucYEQ?autoplay=1&rel=0&modestbranding=1&playsinline=1';
+function openMovie() {
+  mode = 'movie';
+  show('movie');
+  if (document.pointerLockElement) document.exitPointerLock();
+  window.speechSynthesis?.cancel();
+  $('movieFrame').src = MOVIE;
+}
+function closeMovie() {
+  $('movieFrame').src = 'about:blank'; // stops the video
+  inter.standUp();
+  play();
+}
+$('movieLeave').onclick = closeMovie;
+
+// ---------- storybooks at the library ----------
+const story = setupStory({
+  $,
+  name: () => character.name,
+  read: (text) => {
+    const synth = window.speechSynthesis;
+    if (!synth || audio.muted()) return;
+    const u = new SpeechSynthesisUtterance(text.replace(/[\p{Extended_Pictographic}\u200d\ufe0f]/gu, ''));
+    const v = voices.find((x) => FEMALE.test(x.name)) ?? voices[0];
+    if (v) u.voice = v;
+    u.pitch = 1.1; u.rate = 0.92;
+    synth.cancel(); synth.speak(u);
+  },
+  onClose: () => { window.speechSynthesis?.cancel(); play(); },
+});
+function openStory() {
+  mode = 'story';
+  show('story');
+  if (document.pointerLockElement) document.exitPointerLock();
+  story.open();
+}
+function openQuiz() {
+  mode = 'quiz';
+  show('quiz');
+  if (document.pointerLockElement) document.exitPointerLock();
+  quiz.start();
+}
+function closeQuiz() {
+  window.speechSynthesis?.cancel();
+  play();
+}
+function checkRules(dt) {
+  const room = roomAt(player.pos.x, player.pos.z), now = performance.now();
+  // In class, Ms. Lopez wants you to sit down in a chair
+  const teacher = folks.byName('Ms. Lopez');
+  if (teacher && room?.name === 'Classroom') {
+    const seated = inter.mode() === 'sit';
+    if (!seated) {
+      rules.seconds += dt;
+      if (!rules.asked && rules.seconds > 1.5) { rules.asked = true; folks.talk(teacher, character.name, player.pos, 'Please sit down in your chair, {name}! 🪑', null); }
+      else if (rules.asked && !rules.mad && rules.seconds > 11) { rules.mad = true; folks.talk(teacher, character.name, player.pos, 'I said SIT DOWN in your chair, {name}! 😠', 'mad'); }
+      else if (rules.mad && teacher.mood !== 'mad') { teacher.mood = 'mad'; teacher.moodUntil = now + 3000; } // still waiting...
+    } else if (rules.asked) {
+      folks.talk(teacher, character.name, player.pos, rules.mad ? 'Thank you for listening, {name}. ⭐' : 'Great job sitting down, {name}! ⭐', 'happy');
+      rules.asked = rules.mad = false; rules.seconds = -999; // only once per visit
+    }
+  } else { rules.asked = rules.mad = false; rules.seconds = 0; }
+  // Sit at a desk in the classroom and Ms. Lopez starts a math lesson
+  if (room?.name === 'Classroom' && inter.mode() === 'sit' && inter.activeItem()?.userData.type === 'schooldesk') {
+    if (!rules.quizDone && (rules.quizWait += dt) > 2.5) { rules.quizDone = true; openQuiz(); }
+  } else if (inter.mode() !== 'sit') { rules.quizDone = false; rules.quizWait = 0; }
+  // No jumping in the library!
+  const librarian = folks.byName('Mrs. Page');
+  if (librarian && room?.name === 'School Library' && player.air && now > rules.quietAt) {
+    rules.quietAt = now + 8000;
+    folks.talk(librarian, character.name, player.pos, 'Shhh! No jumping in the library, {name}! 😠', 'mad');
+  }
+  // No running by the pool!
+  const lifeguard = folks.byName('Lifeguard Lucy');
+  if (lifeguard && !room && player.speed > 1.5 && now > rules.poolAt && player.pos.x > 23 && player.pos.x < 43 && player.pos.z > -65 && player.pos.z < -49) {
+    rules.poolAt = now + 8000;
+    folks.talk(lifeguard, character.name, player.pos, 'Tweet! No running by the pool, {name}! 😠', 'mad');
+    sfx('whistle', lifeguard.root.position);
+  }
+}
 const traffic = setupTraffic(scene, TRAFFIC);
 function trafficObstacles() {
   const out = [];
@@ -918,6 +1104,16 @@ const animals = setupAnimals(scene, {
   sound: (name, pos) => { if (near(pos, 30)) sfx(name, pos); },
   flutter: (x, z) => { if (Math.hypot(x - player.pos.x, z - player.pos.z) < 12) for (let i = 0; i < 5; i++) noise(0.08, 0.05, 3000, i * 0.07); },
 });
+// farm animal sounds
+function farmSound(kind, pos) {
+  if (!near(pos, 28)) return;
+  if (sfx(kind, pos, { maxDist: 28 })) return; // real moo, oink, baa, cluck
+  if (kind === 'cow') tone(140, 0.9, 'sawtooth', 0.05, 0.8);
+  if (kind === 'pig') for (let i = 0; i < 2; i++) tone(320, 0.12, 'square', 0.04, 0.7, i * 0.18);
+  if (kind === 'sheep') { tone(420, 0.6, 'triangle', 0.06, 0.95); tone(430, 0.5, 'triangle', 0.03, 1.05, 0.05); }
+  if (kind === 'chicken') for (let i = 0; i < 4; i++) tone(900 + i * 60, 0.06, 'square', 0.03, 1.3, i * 0.11);
+  if (kind === 'horse') tone(700, 0.8, 'sawtooth', 0.04, 0.5);
+}
 // little made-up sounds for the woods animals
 function woodsSound(name, pos) {
   if (!near(pos, 22)) return;
@@ -1028,6 +1224,7 @@ function blocked(x, z) {
   }
   for (const c of world.circles) if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + R) ** 2) return true;
   if (world.forest.blocked(x, z, R)) return true;
+  if (world.places.blocked(x, z, R)) return true;
   for (const c of traffic.circles()) if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + R) ** 2) return true;
   const b = world.bounds;
   return x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ;
@@ -1071,12 +1268,14 @@ function updateMovement(dt) {
   player.speed += (target - player.speed) * Math.min(1, dt * 10);
   // in the pool you sink in up to your chest
   const inPool = world.pools.some((p) => player.pos.x > p.x0 && player.pos.x < p.x1 && player.pos.z > p.z0 && player.pos.z < p.z1);
-  if (inPool !== player.swimming) {
-    player.swimming = inPool;
+  const lakeDepth = world.places.waterDepth(player.pos.x, player.pos.z);
+  const inWater = inPool || lakeDepth > 0.05;
+  if (inWater !== player.swimming) {
+    player.swimming = inWater;
     if (!sfx('splash', player.pos, { vol: 0.6 })) noise(0.5, 0.1, 2000, 0, 400); // splash!
-    if (inPool) look.burst(new THREE.Vector3(player.pos.x, 0.1, player.pos.z), 14);
+    if (inWater) look.burst(new THREE.Vector3(player.pos.x, 0.1, player.pos.z), 14);
   }
-  const ground = inPool ? -avatar.height * 0.55 : 0;
+  const ground = inPool ? -avatar.height * 0.55 : -avatar.height * 0.6 * lakeDepth; // deeper the farther out you wade
   // jumping: up, then gravity brings you back down
   if (player.air) {
     player.vy -= 22 * dt;
@@ -1098,22 +1297,23 @@ function updateCamera() {
     return;
   }
   const dir = new THREE.Vector3(-Math.sin(player.yaw) * Math.cos(player.pitch), Math.sin(player.pitch), -Math.cos(player.yaw) * Math.cos(player.pitch));
-  const head = driving
-    ? new THREE.Vector3(driving.position.x, driving.position.y + driving.userData.seat.eye + 0.4, driving.position.z)
+  const vehicle = driving ?? riding;
+  const head = vehicle
+    ? new THREE.Vector3(vehicle.position.x, vehicle.position.y + vehicle.userData.seat.eye + 0.4, vehicle.position.z)
     : inter.mode() === 'lie' // lying down: look at where your head really is
       ? new THREE.Vector3(player.pos.x, player.pos.y + 0.5, player.pos.z)
       : new THREE.Vector3(player.pos.x, player.pos.y + eye + 0.12, player.pos.z);
   // Over-the-shoulder: the camera sits a little up and to the right, so the aiming dot isn't on your head
   const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
   const indoors = !!roomAt(player.pos.x, player.pos.z);
-  const full = driving ? driving.userData.hz * 2 + 3 : (character.age === 'kid' ? 2.4 : 2.9) * (indoors ? 0.8 : 1);
-  const want = head.clone().addScaledVector(dir, -full).addScaledVector(right, driving ? 0 : 0.5).add(new THREE.Vector3(0, driving ? 0.5 : 0.25, 0));
+  const full = vehicle ? vehicle.userData.hz * 2 + 3 : (character.age === 'kid' ? 2.4 : 2.9) * (indoors ? 0.8 : 1);
+  const want = head.clone().addScaledVector(dir, -full).addScaledVector(right, vehicle ? 0 : 0.5).add(new THREE.Vector3(0, vehicle ? 0.5 : 0.25, 0));
   const toCam = want.clone().sub(head);
   const wantLen = toCam.length();
   toCam.normalize();
   // three rays (middle, a bit left, a bit right) so the camera can't slip past a corner or out a window
   refreshNearby();
-  const blockers = [...camBlockers, ...nearby.big.filter((i) => i !== held && i !== driving)];
+  const blockers = [...camBlockers, ...nearby.big.filter((i) => i !== held && i !== driving && i !== riding)];
   const side = new THREE.Vector3(-toCam.z, 0, toCam.x).normalize().multiplyScalar(0.22);
   let len = wantLen;
   for (const k of [0, 1, -1]) {
@@ -1129,7 +1329,7 @@ function updateCamera() {
   pos.y = Math.max(pos.y, 0.25);
   camera.position.copy(pos);
   camDist = dist;
-  avatar.root.visible = driving ? true : dist > 0.55;
+  avatar.root.visible = vehicle ? true : dist > 0.55;
 }
 
 // ---------- looking at things ----------
@@ -1152,6 +1352,13 @@ function updateInteraction() {
     $('crosshair').classList.remove('active');
     const kind = inter.activeKind();
     setHint(kind === 'ride' ? 'Wheee! 🎉' : kind === 'perch' ? 'Look around! · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>Right-click</kbd> to climb down' : '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>Right-click</kbd> to get up');
+    return;
+  }
+  if (riding) {
+    hovered = null;
+    look.setOutline(null, false);
+    $('crosshair').classList.remove('active');
+    setHint('Riding along! 🚗 · <kbd>E</kbd> get out');
     return;
   }
   if (driving) {
@@ -1235,7 +1442,7 @@ function toast(msg, ms = 2000) {
 let mode = 'start';
 let usingPad = false; // true while playing with a game controller
 function show(id) {
-  for (const el of ['start', 'pause', 'catalog', 'creator']) $(el).classList.toggle('hidden', el !== id);
+  for (const el of ['start', 'pause', 'catalog', 'creator', 'quiz', 'story', 'movie']) $(el).classList.toggle('hidden', el !== id);
   $('hud').classList.toggle('hidden', id !== null);
 }
 
@@ -1250,7 +1457,7 @@ function play() {
 document.addEventListener('pointerlockchange', () => {
   if (document.pointerLockElement) { mode = 'play'; show(null); return; }
   for (const k in keys) keys[k] = false;
-  if (mode === 'catalog' || mode === 'creator') return;
+  if (mode === 'catalog' || mode === 'creator' || mode === 'quiz' || mode === 'story' || mode === 'movie') return;
   mode = 'pause';
   show('pause');
 });
@@ -1274,8 +1481,8 @@ function openCreator() {
 }
 addEventListener('resize', () => creator.resize());
 
-$('title').textContent = HOUSE.title;
-document.title = HOUSE.title;
+$('title').textContent = GAME_NAME;
+document.title = GAME_NAME;
 $('who').textContent = character.name;
 $('startBtn').onclick = () => (hasCharacter ? play() : openCreator());
 $('startBtn').textContent = hasCharacter ? "Let's Play!" : 'Make My Character!';
@@ -1361,8 +1568,10 @@ $('closeCatalog').onclick = play;
 // ---------- input ----------
 document.addEventListener('keydown', (e) => {
   if (mode === 'catalog' && (e.code === 'KeyB' || e.code === 'Escape')) { play(); return; }
+  if (mode === 'movie' && e.code === 'Escape') { closeMovie(); return; }
   if (mode !== 'play') return;
   keys[e.code] = true;
+  if (riding) { if (e.code === 'KeyE' || e.code === 'Space') { getOutOfRide(); e.preventDefault(); } return; }
   if (driving) {
     if (e.code === 'KeyE') exitCar();
     if (e.code === 'Space') e.preventDefault();
@@ -1398,7 +1607,8 @@ document.addEventListener('wheel', (e) => {
 }, { passive: true });
 
 // ---------- where am I? ----------
-const ROOM_ICONS = [['garage', '🚗'], ['classroom', '✏️'], ['art', '🎨'], ['library', '📚'], ['office', '📎'], ['school', '🏫'],
+const ROOM_ICONS = [['hospital', '🏥'], ['exam', '🩺'], ['patient', '🛏️'], ['x-ray', '🦴'], ['kenwood library', '📚'], ['cinema', '🍿'], ['movie', '🎬'], ['barn', '🐄'],
+  ['garage', '🚗'], ['classroom', '✏️'], ['art', '🎨'], ['library', '📚'], ['office', '📎'], ['school', '🏫'],
   ['ice cream', '🍦'], ['toy', '🧸'], ['dream', '✨'], ['bath', '🛁'], ['kitchen', '🍳'], ['dining', '🍽️'],
   ['living', '🛋️'], ['hall', '🚪'], ['room', '🛏️']];
 const roomIcon = (name) => (ROOM_ICONS.find(([k]) => name.toLowerCase().includes(k)) ?? [0, '🏠'])[1];
@@ -1450,7 +1660,7 @@ spawnInBed();
 settleAll();
 updateStarHud();
 startNet();
-if (params.has('shot')) window.__test = { look, animals, audio, inter, interact, items, byId, setSwitch, player, hover: (it) => { hovered = it; }, play: () => { mode = 'play'; }, enterCar: (type) => enterCar(items.find((i) => i.userData.type === type)), keys, doors: world.doors, setDoor, folks, traffic, spawnHeld, putDown, paint: (name) => { hoverSurface = { kind: 'wall', room: world.rooms.find((r) => r.name === name) }; paint(); }, player };
+if (params.has('shot')) window.__test = { rules, look, animals, audio, inter, interact, items, byId, setSwitch, player, hover: (it) => { hovered = it; }, play: () => { mode = 'play'; }, enterCar: (type) => enterCar(items.find((i) => i.userData.type === type)), keys, doors: world.doors, setDoor, folks, traffic, spawnHeld, putDown, paint: (name) => { hoverSurface = { kind: 'wall', room: world.rooms.find((r) => r.name === name) }; paint(); }, player };
 
 if (params.has('shot')) show(null);
 else if (params.has('creator')) openCreator();
@@ -1475,7 +1685,8 @@ function updatePad(dt) {
       player.pitch = THREE.MathUtils.clamp(player.pitch - g.ry * 1.8 * dt, -1.25, 1.1);
       drive.lastMouse = performance.now();
     }
-    if (driving) {
+    if (riding) { if (g.pressed(BTN.B) || g.pressed(BTN.A)) getOutOfRide(); }
+    else if (driving) {
       if (g.pressed(BTN.A)) honk();
       if (g.pressed(BTN.B)) exitCar();
       if (g.pressed(BTN.Y)) { recolor(driving, nextIn(KID_COLORS, driving.userData.color)); beep(880, 0.07); save(); }
@@ -1520,6 +1731,7 @@ function updatePad(dt) {
   if (g.pressed(BTN.A)) padFocus.click();
   if (g.pressed(BTN.B) || g.pressed(BTN.START)) {
     if (mode === 'pause' || mode === 'catalog') play();
+    else if (mode === 'movie') closeMovie();
     else if (mode === 'start') $('startBtn').click();
   }
 }
@@ -1549,13 +1761,16 @@ renderer.setAnimationLoop(() => {
   world.update(dt, time);
   if (mode === 'play') {
     if (inter.busy()) inter.updatePlayer(dt, time);
+    else if (riding) updateRide();
     else if (driving) updateDriving(dt); else updateMovement(dt);
+    checkRules(dt);
     checkStars();
     watchSpeed(dt);
   }
   avatar.root.position.copy(player.pos);
   avatar.root.rotation.y = player.facing;
   animateCharacter(avatar, time, player.speed, !!held || !!driving);
+  if (riding) avatar.parts.legL.rotation.x = avatar.parts.legR.rotation.x = -Math.PI / 2;
   inter.poseAvatar(avatar);
   if (player.air) jumpPose(avatar, !!held);
   else if (player.swimming && !held && !inter.busy()) { // paddle paddle
@@ -1570,6 +1785,7 @@ renderer.setAnimationLoop(() => {
   if ((obstacleTimer -= dt) <= 0) { obstacleTimer = 0.15; obstacleCache = trafficObstacles(); }
   traffic.update(dt, obstacleCache, onHonk);
   animals.update(dt, time);
+  world.places.update(dt, time, camera.position, [player.pos], farmSound);
   world.forest.update(dt, time, [player.pos, ...[...remotes.players.values()].map((r) => r.pos)], camera.position, woodsSound);
   updateDoors(dt);
   sendPose(dt);

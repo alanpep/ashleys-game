@@ -152,7 +152,7 @@ export function buildHouse(house) {
     const style = r.floorStyle ?? 'wood';
     const floorMat = new THREE.MeshStandardMaterial({ color: r.floor, map: FT[style] ?? null, roughness: style === 'tile' || style === 'checker' ? 0.4 : 0.85 });
     const wallMat = new THREE.MeshStandardMaterial({ color: r.wall, roughness: 0.9 });
-    const room = { name: r.name, x: r.x, z: r.z, w: r.w, d: r.d, H, wallMat, floorMat, wallColor: r.wall, floorColor: r.floor, defWall: r.wall, defFloor: r.floor, building: house.id };
+    const room = { name: r.name, dark: !!r.dark, x: r.x, z: r.z, w: r.w, d: r.d, H, wallMat, floorMat, wallColor: r.wall, floorColor: r.floor, defWall: r.wall, defFloor: r.floor, building: house.id };
     rooms.push(room);
     const cx = r.x + r.w / 2, cz = r.z + r.d / 2;
 

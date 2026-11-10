@@ -75,7 +75,8 @@ export function setupRemotes(scene) {
         animateCharacter(r.avatar, t + r.id, r.speed, !!r.hold);
         r.avatar.root.rotation.order = 'YXZ';
         r.avatar.root.rotation.x = r.mode === 'lie' ? -Math.PI / 2 : 0;
-        if (r.mode === 'sit') r.avatar.parts.legL.rotation.x = r.avatar.parts.legR.rotation.x = -Math.PI / 2;
+        if (r.mode === 'sit' || r.mode === 'type') r.avatar.parts.legL.rotation.x = r.avatar.parts.legR.rotation.x = -Math.PI / 2;
+        if (r.mode === 'type') { r.avatar.parts.armL.rotation.x = -1.15 + Math.sin(t * 18) * 0.07; r.avatar.parts.armR.rotation.x = -1.15 + Math.sin(t * 18 + 1.7) * 0.07; }
         if (r.mode === 'lie') r.avatar.parts.legL.rotation.x = r.avatar.parts.legR.rotation.x = 0;
         if (r.mode === 'jump') {
           if (!r.hold) r.avatar.parts.armL.rotation.x = r.avatar.parts.armR.rotation.x = -2.7;

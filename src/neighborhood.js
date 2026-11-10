@@ -368,6 +368,11 @@ export const BUILDINGS = [
     ],
     patios: [{ x: -58.2, z: -21.92, w: 16.4, d: 5.4, color: '#e6ddd0' }],
     sign: { text: 'Kenwood Market', x: -50, y: 3.55, z: -21.65, w: 5.2, h: 0.75, bg: '#4f8a46' },
+    signs: [
+      { text: 'Cereal & Snacks', x: -55, y: 2.55, z: -28.5, w: 1.9, h: 0.42, bg: '#f2a25f' },
+      { text: 'Cans & Drinks', x: -51, y: 2.55, z: -28.5, w: 1.9, h: 0.42, bg: '#5b8fd9' },
+      { text: 'Bakery & Snacks', x: -47, y: 2.55, z: -28.5, w: 1.9, h: 0.42, bg: '#c8963c' },
+    ],
     furniture: [
       { item: 'checkout', x: -55.5, z: -24.5, rot: 90 },
       { item: 'checkout', x: -53.0, z: -24.5, rot: 90, color: '#ef84ad' },
@@ -474,6 +479,110 @@ export const BUILDINGS = [
       { item: 'roundrug', x: 4.5, z: -57.5, color: P.mint },
       { item: 'ball', x: 3.0, z: -59.5, color: P.sky },
       { item: 'poster', x: 8.89, z: -55, y: 1.9, rot: -90, color: '#ef84ad' },
+    ],
+  },
+  // ---------------- Hospital ----------------
+  {
+    id: 'hospital', title: 'PepCity Hospital', wallHeight: 3.2, roof: 'flat', exterior: '#f1f3f5', roofColor: '#d9dde2',
+    rooms: [
+      { name: 'Hospital Lobby', x: 54, z: -33, w: 12, d: 5, wall: '#e9f3f8', floor: '#e6e9ec', floorStyle: 'tile', light: 8, recessed: true },
+      { name: 'Exam Room', x: 54, z: -40, w: 4, d: 7, wall: '#dceefa', floor: '#e6e9ec', floorStyle: 'tile' },
+      { name: 'Patient Room', x: 58, z: -40, w: 4, d: 7, wall: '#e3f0dc', floor: '#e6e9ec', floorStyle: 'tile' },
+      { name: 'X-Ray Room', x: 62, z: -40, w: 4, d: 7, wall: '#e6e0f5', floor: '#e6e9ec', floorStyle: 'tile' },
+    ],
+    openings: [
+      { x: 60, z: -28, width: 1.8, slide: true, auto: true },
+      { x: 56, z: -28, width: 2.2, kind: 'window', bottom: 0.7, top: 2.5, noShutters: true },
+      { x: 64, z: -28, width: 2.2, kind: 'window', bottom: 0.7, top: 2.5, noShutters: true },
+      { x: 56, z: -33, width: 0.9 }, { x: 60, z: -33, width: 0.9 }, { x: 64, z: -33, width: 0.9 },
+      { x: 56, z: -40, width: 1.4, kind: 'window', noShutters: true }, { x: 60, z: -40, width: 1.4, kind: 'window', noShutters: true },
+      { x: 54, z: -36.5, width: 1.4, kind: 'window', noShutters: true },
+    ],
+    patios: [{ x: 59.2, z: -27.92, w: 1.6, d: 11.4, color: '#e6ddd0' }],
+    sign: { text: '+ Hospital', x: 60, y: 3.55, z: -27.65, w: 3.8, h: 0.75, bg: '#d9443a' },
+    furniture: [
+      { item: 'counter', x: 57.5, z: -31.8 }, { item: 'computer', x: 56.4, z: -31.6 },
+      { item: 'chair', x: 62.4, z: -29.0, rot: 180 }, { item: 'chair', x: 63.2, z: -29.0, rot: 180 }, { item: 'chair', x: 64.0, z: -29.0, rot: 180 },
+      { item: 'plant', x: 65.4, z: -32.4 }, { item: 'poster', x: 54.11, z: -30.5, y: 1.9, rot: 90, color: '#aee0c5' },
+      { item: 'exambed', x: 55.3, z: -37.6 }, { item: 'stool', x: 56.8, z: -36.2 }, { item: 'poster', x: 57.89, z: -37.0, y: 1.8, rot: -90, color: '#93c9ea' },
+      { item: 'hospitalbed', x: 60.4, z: -38.4 }, { item: 'teddy', x: 60.4, z: -38.0, y: 0.75 }, { item: 'balloons', x: 61.4, z: -39.5 },
+      { item: 'nightstand', x: 59.0, z: -39.5 }, { item: 'flowers', x: 59.0, z: -39.5 },
+      { item: 'xray', x: 64, z: -39.89, y: 1.65 }, { item: 'exambed', x: 63.2, z: -36.2, rot: 90 }, { item: 'wheelchair', x: 65.2, z: -34.2, rot: 180 },
+      { item: 'ambulance', x: 63.8, z: -23.5 },
+      { item: 'clock', x: 60, z: -32.89, y: 2.5, rot: 180 },
+    ],
+  },
+
+  // ---------------- Library ----------------
+  {
+    id: 'library', title: 'Kenwood Library', wallHeight: 3.2, roof: 'flat', exterior: '#e9dcc2', roofColor: '#d9cbb0',
+    rooms: [{ name: 'Kenwood Library', x: 46, z: -63, w: 12, d: 10, wall: '#f3ead8', floor: '#7f9cc4', floorStyle: 'carpet', light: 9, recessed: true }],
+    openings: [
+      { x: 52, z: -63, width: 1.8, slide: true, auto: true },
+      { x: 48.4, z: -63, width: 2.2, kind: 'window', bottom: 0.6, top: 2.6, noShutters: true },
+      { x: 55.6, z: -63, width: 2.2, kind: 'window', bottom: 0.6, top: 2.6, noShutters: true },
+      { x: 49.5, z: -53, width: 1.8, kind: 'window', bottom: 1.2, top: 2.6, noShutters: true },
+      { x: 54.5, z: -53, width: 1.8, kind: 'window', bottom: 1.2, top: 2.6, noShutters: true },
+    ],
+    patios: [{ x: 50.8, z: -65.9, w: 2.4, d: 2.82, color: '#e6ddd0' }],
+    sign: { text: 'Library', x: 52, y: 3.55, z: -63.35, rot: 180, w: 3, h: 0.7, bg: '#4f86c6' },
+    furniture: [
+      ...[-61.6, -60.6, -59.6, -58.6, -57.6, -56.6, -55.6, -54.6].map((z) => ({ item: 'bookshelf', x: 46.25, z, rot: 90 })),
+      ...[-61.6, -60.6, -59.6, -56.6, -55.6, -54.6].map((z) => ({ item: 'bookshelf', x: 57.75, z, rot: -90 })),
+      ...[47.2, 52.0, 57.0].map((x) => ({ item: 'bookshelf', x, z: -53.25, rot: 180 })),
+      { item: 'counter', x: 49.0, z: -61.6, rot: 180 },
+      { item: 'diningtable', x: 52.5, z: -57.6, color: '#c9a77c' },
+      { item: 'chair', x: 51.6, z: -57.6, rot: 90 }, { item: 'chair', x: 53.4, z: -57.6, rot: -90 },
+      { item: 'storybook', x: 55.0, z: -59.5, rot: 180 }, { item: 'storybook', x: 49.6, z: -56.0, rot: 120, color: '#4f86c6' },
+      { item: 'beanbag', x: 55.5, z: -56.0, color: P.lavender }, { item: 'beanbag', x: 50.0, z: -54.4, color: P.mint },
+      { item: 'roundrug', x: 52.5, z: -55.2, color: P.butter }, { item: 'plant', x: 47.0, z: -62.4 },
+      { item: 'clock', x: 52, z: -53.11, y: 2.6, rot: 180 },
+    ],
+  },
+
+  // ---------------- PepCity Cinema (movie theater) ----------------
+  {
+    id: 'cinema', title: 'PepCity Cinema', wallHeight: 4.0, roof: 'flat', exterior: '#5a2a3a', roofColor: '#3a2a3a',
+    rooms: [
+      { name: 'Cinema Lobby', x: -50, z: -6, w: 16, d: 5, wall: '#f8dce8', floor: '#c8463c', floorStyle: 'carpet', light: 8, recessed: true },
+      { name: 'Movie Theater', x: -50, z: -1, w: 16, d: 9, wall: '#3a2a3a', floor: '#5a2a3a', floorStyle: 'carpet', light: 3, recessed: true, dark: true },
+    ],
+    openings: [
+      { x: -42, z: -6, width: 1.8, double: true, glass: true, doorColor: '#d9443a' },
+      { x: -47, z: -6, width: 2.6, kind: 'window', bottom: 0.5, top: 2.6, noShutters: true },
+      { x: -37, z: -6, width: 2.6, kind: 'window', bottom: 0.5, top: 2.6, noShutters: true },
+      { x: -47, z: -1, width: 1.4, kind: 'open', top: 2.6 }, { x: -37, z: -1, width: 1.4, kind: 'open', top: 2.6 },
+    ],
+    patios: [{ x: -50, z: -7.45, w: 16, d: 1.37, color: '#e6ddd0' }],
+    sign: { text: 'PepCity Cinema', x: -42, y: 4.4, z: -6.37, rot: 180, w: 6, h: 1.0, bg: '#d9443a' },
+    furniture: [
+      { item: 'moviescreen', x: -42, z: 7.89, y: 2.2, rot: 180 },
+      ...[2.0, 3.6, 5.2].flatMap((z) => [-46.4, -45.3, -44.2, -43.1, -40.9, -39.8, -38.7, -37.6].map((x) => ({ item: 'theaterseat', x, z: z - 6.5 + 6.5, rot: 0 }))),
+      { item: 'popcornmachine', x: -48.8, z: -3.0, rot: 90 },
+      { item: 'counter', x: -45.4, z: -2.4, rot: 180 }, { item: 'counter', x: -44.4, z: -2.4, rot: 180 },
+      { item: 'popcorn', x: -45.4, z: -2.4, y: 1.0 },
+      { item: 'poster', x: -34.11, z: -4.5, y: 1.9, rot: -90, color: '#ef84ad' }, { item: 'poster', x: -34.11, z: -2.5, y: 1.9, rot: -90, color: '#93c9ea' },
+      { item: 'plant', x: -35.0, z: -5.4 },
+    ],
+  },
+
+  // ---------------- The farm's barn ----------------
+  {
+    id: 'barn', title: 'Red Barn', wallHeight: 4.2, roofHeight: 2.4, exterior: '#b5403a', roofColor: '#6b4a3a', gableColor: '#b5403a',
+    rooms: [{ name: 'Red Barn', x: -102, z: -52, w: 14, d: 10, wall: '#c9a77c', floor: '#a08a6a', floorStyle: 'tile', light: 7 }],
+    openings: [
+      { x: -88, z: -47, width: 3.6, kind: 'garage', top: 3.6 },
+      { x: -95, z: -42, width: 1.1, doorColor: '#fbfaf7' },
+      { x: -98, z: -52, width: 1.4, kind: 'window', bottom: 1.6, top: 2.8, shutters: '#fbfaf7' },
+      { x: -92, z: -52, width: 1.4, kind: 'window', bottom: 1.6, top: 2.8, shutters: '#fbfaf7' },
+      { x: -102, z: -47, width: 1.4, kind: 'window', bottom: 1.6, top: 2.8, shutters: '#fbfaf7' },
+    ],
+    sign: { text: 'PepCity Farm', x: -87.6, y: 4.0, z: -47, rot: 90, w: 3.6, h: 0.7, bg: '#b5403a' },
+    furniture: [
+      { item: 'tractor', x: -95, z: -47, rot: 90 },
+      { item: 'haybale', x: -100.8, z: -50.9 }, { item: 'haybale', x: -99.7, z: -50.9 }, { item: 'haybale', x: -100.3, z: -50.9, y: 0.6 },
+      { item: 'haybale', x: -100.8, z: -43.4, rot: 90 }, { item: 'haybale', x: -92, z: -43.3 },
+      { item: 'workbench', x: -96.5, z: -51.6 }, { item: 'pegboard', x: -96.5, z: -51.89, y: 2.0 },
     ],
   },
 ];
@@ -630,6 +739,42 @@ export const AREAS = [
     ],
   },
   {
+    id: 'grocery-cereal',
+    furniture: [
+      { item: 'cerealdisplay', x: -55, z: -27.7 },
+      { item: 'cerealbowl', x: -53.0, z: -24.1, y: 1.0, color: '#ef84ad' },
+    ],
+  },
+  {
+    id: 'clocks', // digital clocks that show the real time
+    furniture: [
+      { item: 'digitalclock', x: -48.11, z: -56.5, y: 2.3, rot: -90 },
+      { item: 'digitalclock', x: -4.5, z: -36.11, y: 2.45, rot: 180 },
+      { item: 'digitalclock', x: 68.11, z: -31.5, y: 2.2, rot: 90 },
+      { item: 'digitalclock', x: -50, z: -21.89, y: 2.8, rot: 180 },
+    ],
+  },
+  {
+    id: 'farm',
+    furniture: [
+      ...Array.from({ length: 12 }, (_, i) => ({ item: 'pumpkin', x: -91 + (i % 4) * 2.2 + Math.sin(i) * 0.4, z: -8 + Math.floor(i / 4) * 2.0, rot: i * 40 })),
+      { item: 'haybale', x: -82.0, z: -38.0 }, { item: 'haybale', x: -83.2, z: -38.0, rot: 90 }, { item: 'haybale', x: -82.6, z: -38.0, y: 0.6 },
+      { item: 'picnictable', x: -80, z: -12, rot: 10 },
+    ],
+  },
+  {
+    id: 'beach',
+    furniture: [
+      { item: 'umbrella', x: 106, z: 4 }, { item: 'loungechair', x: 106.8, z: 5.2, rot: -90, color: P.sky },
+      { item: 'umbrella', x: 104, z: -20, color: P.sky }, { item: 'loungechair', x: 104.8, z: -18.8, rot: -90, color: P.butter },
+      { item: 'umbrella', x: 107, z: 30, color: P.mint }, { item: 'loungechair', x: 107.8, z: 31.2, rot: -90, color: P.bubblegum },
+      { item: 'sandcastle', x: 109, z: 14 }, { item: 'sandcastle', x: 110, z: -30 },
+      { item: 'ball', x: 108, z: 9, color: P.butter }, { item: 'ball', x: 103, z: -26, color: P.bubblegum },
+      { item: 'rug', x: 105, z: 18, rot: 90, color: P.coral }, { item: 'rug', x: 103, z: -6, rot: 90, color: P.sky },
+      { item: 'bench', x: 98.5, z: 0, rot: 90 }, { item: 'picnictable', x: 99, z: 20, rot: 90 },
+    ],
+  },
+  {
     id: 'pool',
     furniture: [
       { item: 'divingboard', x: 33, z: -51.0, rot: 180 },
@@ -668,6 +813,9 @@ export const ZONES = [
   { name: 'School Playground', icon: '🏀', x: 6, z: -48, w: 15, d: 12 },
   { name: 'Lessenger Elementary', icon: '🏫', x: -20, z: -36, w: 26, d: 5 },
   { name: 'Kenwood Pool', icon: '🏊', x: 24, z: -64, w: 18, d: 14 },
+  { name: 'PepCity Farm', icon: '🚜', x: -108, z: -64, w: 34, d: 68 },
+  { name: 'Lighthouse Pier', icon: '🗼', x: 112, z: 8, w: 30, d: 4 },
+  { name: 'Great Lake Beach', icon: '🏖️', x: 94, z: -110, w: 120, d: 200 },
   { name: 'The Treehouse', icon: '🌳', x: -34, z: 32, w: 12, d: 12 },
   { name: 'Fairy Ring', icon: '🍄', x: 39, z: 34, w: 12, d: 12 },
   { name: 'Campsite', icon: '🏕️', x: -58, z: 32, w: 16, d: 16 },
@@ -703,17 +851,27 @@ export const STARS = [
   [-28, 3.75, 38],      // up in the treehouse!
   [46, 1.7, 40],        // on top of the fairy house
   [-60.5, 0.6, 73.6],   // next to the hidden treasure chest
+  [65.4, 0.6, -39.4],   // hospital x-ray room
+  [57.3, 0.6, -53.6],   // library corner
+  [-49.4, 0.6, 7.4],    // movie theater
+  [-89.5, 0.6, -5.5],   // pumpkin patch
+  [137, 0.7, 10],       // end of the lighthouse pier
 ];
 
 // Swimming pools: [x0, z0, x1, z1] of the water
 export const POOLS = [[27, -61, 39, -53]];
 
-export const WORLD_BOUNDS = { minX: -110, maxX: 125, minZ: -105, maxZ: 85 };
+export const WORLD_BOUNDS = { minX: -110, maxX: 140, minZ: -105, maxZ: 85 };
+
+// The farm (west) and the beach on the Great Lake (east)
+export const FARM = { pen: [-100, -36, -80, -16], gate: [-26.5, -23.5], corn: [-106, -12, -96, 4], road: [-88, -48.5, -72.5, -45.5] };
+export const BEACH = { sand: 96, shore: 113, swimTo: 122, pier: { x0: 111, x1: 139, z: 10, w: 2.6 }, lot: [93.4, -16, 100, -6] };
 
 // ---------- Kenwood Woods ----------
 export const WOODS = {
   loopRect: { x0: -70, x1: 90, z0: -70, z1: -12 },
   townStrip: { x0: -30, x1: 72, z0: -9, z1: 22 }, // the houses and their yards: no forest here
+  clearRects: [[-108, -64, -74, 6], [95, -200, 400, 200]], // the farm and the beach
   trails: [
     [[5, 17], [5, 28], [2, 38], [-12, 45], [-30, 47], [-48, 52], [-55, 62], [-40, 70], [-15, 72], [8, 66], [28, 60], [48, 63], [68, 58], [80, 46], [70, 36], [60, 31]],
     [[2, 38], [14, 42], [19.5, 45.5]],    // to the frog pond
@@ -780,6 +938,38 @@ export const PEOPLE = [
     says: ['Hi sweetie! 💕', 'I love you to the moon and back! 🌙', 'Did you brush your teeth? 🪥', "Let's find some golden stars! ⭐", 'Want a snack? 🍎'],
     look: { age: 'grownup', body: 'girl', skin: '#f3c9a8', eyes: '#6b5a3c', hair: 'ponytail', hairColor: '#5a3a26',
       top: 'long', topColor: '#4a3a6e', bottom: 'pants', bottomColor: '#5b7fb0', shoes: '#fbfaf7', hat: 'none' } },
+
+  // ---- people who live in the Blue House and the Yellow House ----
+  { name: 'Grandma Bea', job: 'read', at: [-16.3, 7.3], face: 180, seatY: 0.5, says: ['Welcome to our house, dear! 💙', 'Would you like a cookie? 🍪', 'I love a good book! 📖'],
+    look: { age: 'grownup', body: 'girl', skin: '#f1c7a3', hair: 'bun', hairColor: '#e8e4dc', top: 'long', topColor: '#bba6e6', bottom: 'skirt', bottomColor: '#6f819a', face: 'glasses', hat: 'none' } },
+  { name: 'Grandpa Walt', job: 'cook', at: [-9.6, 6.95], face: 0, says: ['Making my famous soup! 🍲', 'Smells good, huh? 😋'],
+    look: { age: 'grownup', body: 'boy', skin: '#e9b896', hair: 'buzz', hairColor: '#e8e4dc', beard: 'mustache', top: 'tee', topColor: '#93c9ea', bottom: 'pants', bottomColor: '#6b5a4a', hat: 'none' } },
+  { name: 'Mr. Sunny', job: 'read', at: [-17.4, -25.35], face: 0, seatY: 0.5, says: ['Hi neighbor! 👋', 'Come in, come in! 💛'],
+    look: { age: 'grownup', body: 'boy', skin: '#9a6440', hair: 'curly', hairColor: '#2b2220', top: 'hoodie', topColor: '#f7da7e', bottom: 'pants', bottomColor: '#3f5f8f', hat: 'none' } },
+  { name: 'Penny', job: 'type', at: [-14.2, -24.7], face: 180, says: ['Listen to me play! 🎹', 'I am practicing piano! 🎶'],
+    look: { age: 'kid', body: 'girl', skin: '#9a6440', hair: 'pigtails', hairColor: '#2b2220', top: 'dress', topColor: '#f7da7e', hat: 'bow', extraColor: '#ef84ad' } },
+  { name: 'Mrs. Sunny', job: 'cook', at: [-11.6, -25.05], face: 180, says: ['Lunch is almost ready! 🥪', 'Want some lemonade? 🍋'],
+    look: { age: 'grownup', body: 'girl', skin: '#c68c63', hair: 'long', hairColor: '#2b2220', top: 'long', topColor: '#ef84ad', bottom: 'pants', bottomColor: '#5b7fb0', hat: 'none' } },
+
+  // ---- people at the hospital, library, cinema, farm and beach ----
+  { name: 'Dr. Hart', job: 'wave', at: [56.9, -35.4], face: -120, says: ['Time for your checkup! 🩺', 'Eat your veggies and stay healthy! 🥦', 'Hop on the bed and say ahhh! 👅'],
+    look: { age: 'grownup', body: 'girl', skin: '#c68c63', hair: 'bun', hairColor: '#2b2220', top: 'long', topColor: '#fbfaf7', bottom: 'pants', bottomColor: '#5fb3a8', face: 'glasses', hat: 'none' } },
+  { name: 'Nurse Daisy', job: 'type', at: [57.5, -32.45], face: 0, says: ['Welcome to the hospital! 🏥', 'The doctor will see you now! 🩺', 'Feel better soon! 💖'],
+    look: { age: 'grownup', body: 'girl', skin: '#f1c7a3', hair: 'ponytail', hairColor: '#d9a95a', top: 'tee', topColor: '#93c9ea', bottom: 'pants', bottomColor: '#93c9ea', hat: 'none' } },
+  { name: 'Mr. Booker', job: 'type', at: [49.0, -60.9], face: 180, says: ['Welcome to the library! 📚', 'Try reading a storybook! 📖', 'Shhh, quiet voices please! 🤫'],
+    look: { age: 'grownup', body: 'boy', skin: '#6b4128', hair: 'short', hairColor: '#c9c4bf', beard: 'beard', top: 'long', topColor: '#a0745a', bottom: 'pants', bottomColor: '#3b3b48', face: 'glasses', hat: 'none' } },
+  { name: 'Ticket Tina', job: 'wave', at: [-44.9, -1.7], face: 180, says: ['Welcome to the movies! 🎬', 'Grab some popcorn! 🍿', 'The movie is starting! 🎞️'],
+    look: { age: 'grownup', body: 'girl', skin: '#e0ac84', hair: 'curly', hairColor: '#a8592f', top: 'tee', topColor: '#d9443a', bottom: 'skirt', bottomColor: '#2a2727', hat: 'cap', extraColor: '#d9443a' } },
+  { name: 'Farmer Ruth', job: 'wave', at: [-78.6, -27.5], face: -90, says: ['Welcome to the farm! 🚜', 'Moo! Meet my cows! 🐄', 'Want to pick a pumpkin? 🎃'],
+    look: { age: 'grownup', body: 'girl', skin: '#e0ac84', hair: 'pigtails', hairColor: '#a8592f', top: 'long', topColor: '#d9443a', bottom: 'pants', bottomColor: '#3f5f8f', hat: 'cap', extraColor: '#f2cf63' } },
+  { name: 'Farmer Hank', job: 'cook', at: [-90.8, -37.0], face: 0, says: ['Feeding time for the animals! 🌾', 'The tractor is in the barn! 🚜'],
+    look: { age: 'grownup', body: 'boy', skin: '#e9b896', hair: 'short', hairColor: '#7a4a2c', beard: 'beard', top: 'long', topColor: '#4f86c6', bottom: 'pants', bottomColor: '#3f5f8f', hat: 'cap', extraColor: '#4f8a46' } },
+  { name: 'Lifeguard Leo', job: 'whistle', at: [109.5, -8.2], face: 90, says: ['Swim safe in the lake! 🌊', 'Stay where I can see you! 👀'],
+    look: { age: 'grownup', body: 'boy', skin: '#c68c63', hair: 'spiky', hairColor: '#f1d69a', top: 'tank', topColor: '#d9443a', bottom: 'shorts', bottomColor: '#d9443a', face: 'sunglasses' } },
+  { name: 'Coral', job: 'cook', at: [108.2, 14.6], face: 135, says: ['I built a sandcastle! 🏰', 'Want to look for seashells? 🐚'],
+    look: { age: 'kid', body: 'girl', skin: '#f1c7a3', hair: 'ponytail', hairColor: '#d9a95a', top: 'tank', topColor: '#ef84ad', bottom: 'shorts', bottomColor: '#93c9ea', hat: 'cap', extraColor: '#f7da7e' } },
+  { name: 'Beach Bob', path: [[101, -60], [101, 60]], speed: 0.8, says: ['What a beautiful lake! 🌊', 'The water is chilly! 🥶'],
+    look: { age: 'grownup', body: 'boy', skin: '#e9b896', hair: 'buzz', hairColor: '#7a4a2c', top: 'tank', topColor: '#f7da7e', bottom: 'shorts', bottomColor: '#5fb3a8', hat: 'cap', extraColor: '#fbfaf7' } },
 
   // ---- people at work (at: where they stand, face: which way, in degrees like furniture) ----
   { name: 'Officer Dan', job: 'directing', at: [-23.4, -57.5], face: -90, says: ['Officer Dan, keeping you safe! 👮', 'Slow down near the school! 🚸'],

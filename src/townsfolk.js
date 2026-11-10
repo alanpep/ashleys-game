@@ -1,7 +1,7 @@
 // People who live in town: they walk their routes, step aside for you, and say hi when you click them.
 // Where they are comes from the clock, so two players see them in (almost) the same places.
 import * as THREE from 'three';
-import { createCharacter, animateCharacter, DEFAULT_CHARACTER } from './character.js';
+import { createCharacter, animateCharacter, DEFAULT_CHARACTER, setMood } from './character.js';
 import { createItem } from './items.js';
 
 export function bubble(text) {
@@ -109,6 +109,9 @@ export function setupTownsfolk(scene, people, sayings, hooks = {}) {
       case 'read':
         p.armL.rotation.x = p.armR.rotation.x = -1.0; p.head.rotation.x = 0.3;
         break;
+      case 'cook': // stirring a pot
+        p.armR.rotation.x = -1.3 + Math.sin(t * 5) * 0.25; p.armR.rotation.z = Math.cos(t * 5) * 0.3;
+        break;
       case 'paint':
         p.armR.rotation.x = -1.5 + Math.sin(t * 4 + f.offset) * 0.3; p.armR.rotation.z = Math.sin(t * 3 + f.offset) * 0.3;
         break;
@@ -173,9 +176,13 @@ export function setupTownsfolk(scene, people, sayings, hooks = {}) {
     folks,
     meshes: folks.map((f) => f.root),
     find(obj) { while (obj) { if (obj.userData?.folk) return obj.userData.folk; obj = obj.parent; } return null; },
-    talk(f, name, facing) {
+    byName: (n) => folks.find((f) => f.def.name === n),
+    // say something (a random line, or a given one), with a feeling on their face, out loud
+    talk(f, name, facing, given, mood = 'happy') {
       const lines = f.def.says ?? sayings;
-      const line = lines[Math.floor(Math.random() * lines.length)].replace('{name}', name || 'friend');
+      const line = (given ?? lines[Math.floor(Math.random() * lines.length)]).replace('{name}', name || 'friend');
+      f.mood = mood; f.moodUntil = performance.now() + (mood === 'mad' ? 6000 : 3500);
+      hooks.speak?.(line, f);
       if (f.bubble) scene.remove(f.bubble);
       f.bubble = bubble(line);
       scene.add(f.bubble);
@@ -185,7 +192,10 @@ export function setupTownsfolk(scene, people, sayings, hooks = {}) {
     // avoid: list of {x, z} for players, so people step around them
     update(dt, t, avoid, camPos, view = 65) {
       const now = Date.now() / 1000;
+      const nowMs = performance.now();
       for (const f of folks) {
+        if (f.mood && nowMs > f.moodUntil) f.mood = null; // feelings fade after a while
+        setMood(f.ch, f.mood ?? null);
         // people far away aren't drawn or animated (keeps the game fast)
         const far = camPos && (f.root.position.x - camPos.x) ** 2 + (f.root.position.z - camPos.z) ** 2 > view * view;
         f.root.visible = !far;

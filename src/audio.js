@@ -33,6 +33,11 @@ const FILES = {
   piano: 'uhhknoxpro-piano-loop-432112.mp3',
   flush: 'vibehorn-toilet-flush-fx-3-424983.mp3',
   street: 'yuk1to-street-ambience-traffic-410714.mp3',
+  cow: ['dragon-studio-cow-moo-1-472361.mp3', 'dragon-studio-cow-moo-390282.mp3'],
+  pig: ['freesound_community-pig-grunt-100272.mp3', 'freesound_community-pig-oink-47167.mp3'],
+  sheep: 'universfield-sheep-bleat-122256.mp3',
+  chicken: 'dragon-studio-chicken-sounds-487676.mp3',
+  popcorn: 'alex_jauk-popcorn-noise-259552.mp3',
 };
 // how long a one-shot may play (some files are long), and how loud
 const SHOT = {
@@ -41,6 +46,8 @@ const SHOT = {
   doorbell: { max: 2.5, vol: 0.6, dist: 20 }, chime: { max: 2, vol: 0.5, dist: 15 }, schoolbell: { max: 4, vol: 0.6, dist: 40 }, garage: { max: 4.5, vol: 0.6, dist: 25 },
   quack: { max: 1.2, vol: 0.8 }, bounce: { max: 0.6, vol: 0.8 }, register: { max: 1.6, vol: 0.6 }, piano: { max: 7, vol: 0.6 },
   flush: { max: 4, vol: 0.7 }, icecreamsong: { max: 6, vol: 0.6 },
+  cow: { max: 2.5, vol: 0.7, dist: 28 }, pig: { max: 1.5, vol: 0.7, dist: 22 }, sheep: { max: 2, vol: 0.7, dist: 22 },
+  chicken: { max: 2, vol: 0.55, dist: 18 }, popcorn: { max: 2.5, vol: 0.6, dist: 15 },
 };
 
 export function setupAudio() {
@@ -101,7 +108,7 @@ export function setupAudio() {
       master.gain.value = muted ? 0 : 1;
       master.connect(ctx.destination);
       for (const n of ['dog', 'cat', 'siren', 'siren2', 'whistle', 'honk', 'splash', 'hose', 'doorbell', 'chime', 'schoolbell', 'garage',
-        'quack', 'bounce', 'register', 'piano', 'flush', 'icecreamsong']) load(n);
+        'quack', 'bounce', 'register', 'piano', 'flush', 'icecreamsong', 'cow', 'pig', 'sheep', 'chicken', 'popcorn']) load(n);
       api.onStart?.();
     },
     loop,

@@ -183,6 +183,14 @@ export function createCharacter(c) {
   const mouth = mesh(new THREE.TorusGeometry(r * 0.17, r * 0.035, 8, 16, Math.PI), mat('#a8483f'), head, 0, -r * 0.3, r * 0.93);
   mouth.rotation.z = Math.PI;
   mouth.rotation.x = -0.2;
+  parts.mouth = mouth;
+  // eyebrows only show up for strong feelings (mad or sad)
+  for (const side of [-1, 1]) {
+    const brow = mesh(new THREE.BoxGeometry(r * 0.34, r * 0.085, r * 0.05), mat(c.hairColor ?? '#4a2f22'), head, side * r * 0.36, r * 0.34, r * 0.92);
+    brow.visible = false;
+    parts[side < 0 ? 'browL' : 'browR'] = brow;
+  }
+  parts.r = r;
 
   if (c.face === 'freckles') {
     for (let i = 0; i < 8; i++) {
@@ -366,6 +374,20 @@ export function createCharacter(c) {
   root.traverse((o) => { if (!o.isMesh) groups.push(o); });
   for (const g of groups) mergeStatic(g);
   return { root, parts, eyeHeight, height: eyeHeight + r };
+}
+
+// Feelings on the face: 'happy' (big smile), 'mad' (frown + angry eyebrows), 'sad', or normal (null)
+export function setMood(ch, mood) {
+  const p = ch.parts;
+  if (!p.mouth || p.mood === mood) return;
+  p.mood = mood;
+  const frown = mood === 'mad' || mood === 'sad', r = p.r;
+  p.mouth.rotation.z = frown ? 0 : Math.PI;
+  p.mouth.position.y = -r * 0.3 - (frown ? r * 0.17 : 0);
+  p.mouth.scale.setScalar(mood === 'happy' ? 1.3 : 1);
+  p.browL.visible = p.browR.visible = frown;
+  p.browL.rotation.z = mood === 'mad' ? -0.5 : 0.4;
+  p.browR.rotation.z = mood === 'mad' ? 0.5 : -0.4;
 }
 
 // Animate the character. speed: 0 = standing, 1 = walking, 2 = running.
