@@ -589,6 +589,7 @@ export function setupInteractions(ctx) {
     xray: { label: 'look at the x-ray', fn: (it) => { S.sparkle(); say(it, pick(['Look at all those bones! 🦴', 'That is a skeleton! 💀', 'You have 206 bones! 🦴'])); } },
     storybook: { label: 'read a story', mine: true, fn: () => ctx.openStory() },
     popcorn: { label: 'eat some popcorn', mine: true, fn: eat },
+    cottoncandy: { label: 'eat it!', mine: true, fn: eat }, hotdog: { label: 'eat it!', mine: true, fn: eat },
     pumpkin: { label: 'knock on it', fn: (it) => { tone(160, 0.12, 'sine', 0.14, 0.6); hop(it, 0.1); say(it, pick(['Thunk! 🎃', 'A big pumpkin! 🎃', 'Pie time? 🥧'])); } },
     sandcastle: { label: 'build it bigger', fn: (it) => {
       noise(0.6, 0.06, 900); growBounce(it); say(it, pick(['A sandcastle! 🏰', 'Royal beach castle! 👑', 'Add a moat! 🌊']));

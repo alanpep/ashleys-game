@@ -105,6 +105,7 @@ audio.onStart = () => {
     woodsBirds: audio.loop('birds', { x: 5, z: 52, vol: 0.9, ref: 14, max: 45 }),
     pond: audio.loop('fountain', { x: 25, z: 50, vol: 0.35, ref: 3, max: 16 }),
     popcorn: audio.loop('popcorn', { x: -48.8, z: -3, vol: 0.35, ref: 1.5, max: 10 }),
+    carousel: audio.loop('piano', { x: 95, z: 116, vol: 0.5, ref: 4, max: 28 }),
   };
 };
 for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, () => audio.start(), { once: false, passive: true });
@@ -135,6 +136,7 @@ function updateSounds(dt) {
   bg.fire.level(best ? 1 : 0);
   bg.fountain.level(inside ? 0.2 : 1);
   bg.woodsBirds.level(inside ? 0.2 : 1);
+  bg.carousel.level(inside ? 0 : 1);
   bg.popcorn.level(room?.building === 'cinema' ? (mode === 'movie' ? 0.1 : 1) : 0);
   bg.pond.level(inside ? 0.2 : 1);
   bg.classroom.level(room?.building === 'school' ? 1 : 0.15);
@@ -211,6 +213,7 @@ const animItems = new Set();
 let held = null, hovered = null, hoverSurface = null, hoverDoor = null, hoverFolk = null, hoverFan = null;
 let driving = null; // the car (or bus) you're driving
 let riding = null;  // the car a friend is driving, with you in it
+let parkRide = null, hoverRide = null; // a Fun Park ride you're on / looking at
 const drive = { v: 0, steer: 0, lastMouse: 0 };
 const padIn = { lx: 0, ly: 0, lt: 0, rt: 0 }; // the game controller's sticks and triggers
 const newId = () => Math.random().toString(36).slice(2, 10);
@@ -518,7 +521,7 @@ function sendPose(dt) {
   if (poseTimer < 0.08) return;
   poseTimer = 0;
   const thing = driving ?? held;
-  const p = { x: r3(player.pos.x), y: r3(player.pos.y), z: r3(player.pos.z), f: r3(player.facing), s: r3(player.speed), h: thing ? recordOf(thing) : null, d: driving ? 1 : 0, m: player.air ? 'jump' : riding ? 'sit' : inter.mode() };
+  const p = { x: r3(player.pos.x), y: r3(player.pos.y), z: r3(player.pos.z), f: r3(player.facing), s: r3(player.speed), h: thing ? recordOf(thing) : null, d: driving ? 1 : 0, m: player.air ? 'jump' : riding || parkRide ? 'sit' : inter.mode() };
   const s = JSON.stringify(p);
   if (s === lastPose) return;
   lastPose = s;
@@ -689,6 +692,7 @@ function jump() {
 }
 
 function primaryAction() {
+  if (parkRide) { leaveParkRide(); return; }
   if (inter.busy()) { inter.standUp(); return; }
   if (riding) { getOutOfRide(); return; }
   if (driving) exitCar();
@@ -717,6 +721,8 @@ const inter = setupInteractions({
   openMovie: () => openMovie(),
 });
 function interact() {
+  if (parkRide) { leaveParkRide(); return; }
+  if (hoverRide) { startParkRide(hoverRide); return; }
   if (driving) { honk(); return; }
   if (riding) { getOutOfRide(); return; }
   if (inter.busy()) { inter.standUp(); return; }
@@ -809,6 +815,7 @@ function circleHits(c, ignore) {
   for (const o of world.circles) if ((c.x - o.x) ** 2 + (c.z - o.z) ** 2 < (c.r + o.r) ** 2) return true;
   if (world.forest.blocked(c.x, c.z, c.r)) return true;
   if (world.places.blocked(c.x, c.z, c.r)) return true;
+  if (world.funpark.blocked(c.x, c.z, c.r)) return true;
   for (const o of traffic.circles()) if ((c.x - o.x) ** 2 + (c.z - o.z) ** 2 < (c.r + o.r) ** 2) return true;
   for (const it of items) {
     if (it === ignore || it.userData.action !== 'drive') continue;
@@ -876,6 +883,67 @@ function updateRide() {
   player.facing = riding.rotation.y;
   player.speed = 0;
   if (performance.now() - drive.lastMouse > 1500) player.yaw += wrapAngle(riding.rotation.y + Math.PI - player.yaw) * 0.03;
+}
+
+// hidden test shortcut (F8): jump to the Fun Park gate
+function teleportToFunPark() {
+  if (parkRide) leaveParkRide(true);
+  if (driving) exitCar();
+  if (riding) getOutOfRide();
+  inter.standUp();
+  player.pos.set(80, 0, 102); player.yaw = Math.PI; player.pitch = -0.05; player.facing = 0;
+  toast('🎢 Welcome to PepCity Fun Park!');
+}
+
+// ---------- riding the Fun Park rides ----------
+let bumpAt = 0;
+const rideQ = new THREE.Quaternion(), rideP = new THREE.Vector3(), rideUp = new THREE.Vector3(), rideFwd = new THREE.Vector3();
+function startParkRide(ride) {
+  if (held) { toast('Put down what you are holding first!'); return; }
+  const session = ride.board(player.pos.clone(), () => ({
+    f: THREE.MathUtils.clamp((keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - padIn.ly + padIn.rt - padIn.lt, -1, 1),
+    s: THREE.MathUtils.clamp((keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + padIn.lx, -1, 1),
+  }));
+  parkRide = { ride, session, q: new THREE.Quaternion(), time: 0, rumble: 0, wasFast: false };
+  player.firstPerson = false;
+  chime([660, 880, 1100]);
+  toast(`All aboard the ${ride.name}! 🎉`);
+}
+function leaveParkRide(force) {
+  if (!parkRide) return;
+  if (!force && !parkRide.session.canLeave) { toast('Hold on tight until the ride stops! 🎢'); return; }
+  const { session } = parkRide;
+  session.end?.();
+  parkRide = null;
+  player.pos.copy(session.exit); player.pos.y = 0;
+  beep(440, 0.1, 'triangle');
+}
+function updateParkRide(dt) {
+  const pr = parkRide, s = pr.session;
+  s.tick?.(dt);
+  pr.time += dt;
+  const a = s.anchor;
+  a.updateWorldMatrix(true, false);
+  a.getWorldPosition(rideP); a.getWorldQuaternion(rideQ);
+  rideUp.set(0, 1, 0).applyQuaternion(rideQ);
+  rideFwd.set(0, 0, 1).applyQuaternion(rideQ);
+  const legH = avatar.parts.legL.position.y;
+  player.pos.copy(rideP).addScaledVector(rideUp, -legH + 0.02);
+  player.facing = Math.atan2(rideFwd.x, rideFwd.z);
+  player.speed = 0;
+  pr.q.copy(rideQ);
+  if ((pr.ride.follow || s.follow) && performance.now() - drive.lastMouse > 1500) player.yaw += wrapAngle(player.facing + Math.PI - player.yaw) * Math.min(1, dt * 2);
+  // coaster sounds: rumbling wheels, and a "wheee!" on the big drops
+  const v = s.speed?.() ?? 0;
+  if (pr.ride.coaster) {
+    pr.rumble -= dt;
+    if (pr.rumble <= 0 && v > 3) { pr.rumble = 0.35; noise(0.4, Math.min(0.08, v * 0.004), 300 + v * 30); }
+    const fast = v > 14;
+    if (fast && !pr.wasFast) { tone(500, 1.0, 'sine', 0.1, 2); toast('Wheeeee! 🎢', 1200); }
+    pr.wasFast = fast;
+  }
+  if (s.drop?.() && !pr.dropped) { pr.dropped = true; tone(700, 1.2, 'sine', 0.1, 0.4); toast('AAAAAH! 😱', 1200); }
+  if (s.done()) { leaveParkRide(true); toast('What a ride! 🎉'); }
 }
 
 function honkSound(type, pos) {
@@ -1225,6 +1293,7 @@ function blocked(x, z) {
   for (const c of world.circles) if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + R) ** 2) return true;
   if (world.forest.blocked(x, z, R)) return true;
   if (world.places.blocked(x, z, R)) return true;
+  if (world.funpark.blocked(x, z, R)) return true;
   for (const c of traffic.circles()) if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + R) ** 2) return true;
   const b = world.bounds;
   return x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ;
@@ -1306,8 +1375,9 @@ function updateCamera() {
   // Over-the-shoulder: the camera sits a little up and to the right, so the aiming dot isn't on your head
   const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
   const indoors = !!roomAt(player.pos.x, player.pos.z);
-  const full = vehicle ? vehicle.userData.hz * 2 + 3 : (character.age === 'kid' ? 2.4 : 2.9) * (indoors ? 0.8 : 1);
-  const want = head.clone().addScaledVector(dir, -full).addScaledVector(right, vehicle ? 0 : 0.5).add(new THREE.Vector3(0, vehicle ? 0.5 : 0.25, 0));
+  const onRide = !!parkRide;
+  const full = vehicle ? vehicle.userData.hz * 2 + 3 : onRide ? 6 : (character.age === 'kid' ? 2.4 : 2.9) * (indoors ? 0.8 : 1);
+  const want = head.clone().addScaledVector(dir, -full).addScaledVector(right, vehicle || onRide ? 0 : 0.5).add(new THREE.Vector3(0, vehicle ? 0.5 : onRide ? 2.2 : 0.25, 0));
   const toCam = want.clone().sub(head);
   const wantLen = toCam.length();
   toCam.normalize();
@@ -1334,7 +1404,7 @@ function updateCamera() {
 
 // ---------- looking at things ----------
 // things close enough to look at or bump the camera into (refreshed a few times a second)
-const nearby = { items: [], folks: [], big: [], t: -1 };
+const nearby = { items: [], folks: [], big: [], rides: [], t: -1 };
 function refreshNearby() {
   if (time - nearby.t < 0.25) return;
   nearby.t = time;
@@ -1342,10 +1412,18 @@ function refreshNearby() {
   nearby.items = items.filter((i) => Math.abs(i.position.x - p.x) < r && Math.abs(i.position.z - p.z) < r);
   nearby.big = nearby.items.filter((i) => i.userData.baseY + i.userData.hx > 0.6);
   nearby.folks = folks.meshes.filter((m) => Math.abs(m.position.x - p.x) < r && Math.abs(m.position.z - p.z) < r);
+  nearby.rides = p.z > 80 ? world.funpark.clickables : [];
 }
 function updateInteraction() {
   refreshNearby();
-  hoverDoor = hoverFolk = hoverFan = null;
+  hoverDoor = hoverFolk = hoverFan = hoverRide = null;
+  if (parkRide) {
+    hovered = null;
+    look.setOutline(null, false);
+    $('crosshair').classList.remove('active');
+    setHint(parkRide.session.canLeave ? `Riding the <b>${parkRide.ride.name}</b>! 🎉 · <kbd>E</kbd> get off` : `Hold on tight! 🎢`);
+    return;
+  }
   if (inter.busy()) {
     hovered = null;
     look.setOutline(null, false);
@@ -1383,13 +1461,20 @@ function updateInteraction() {
   }
   centerRay.setFromCamera(CENTER, camera);
   centerRay.far = REACH + camDist;
-  const hit = centerRay.intersectObjects([...statics, ...nearby.items, ...world.doorParts, ...world.fanParts, ...nearby.folks], true).find((h) => h.face);
+  const hit = centerRay.intersectObjects([...statics, ...nearby.items, ...world.doorParts, ...world.fanParts, ...nearby.folks, ...nearby.rides], true).find((h) => h.face);
   hovered = hit ? findItem(hit.object) : null;
   if (hit?.object.userData.door) {
     hoverDoor = hit.object.userData.door;
     look.setOutline(null, false);
     $('crosshair').classList.toggle('active', !hoverDoor.auto);
     setHint(hoverDoor.auto ? 'This door opens all by itself! ✨' : `<b>${hoverDoor.name}</b> — <kbd>Right-click</kbd> ${hoverDoor.open ? 'close' : 'open'}`);
+    return;
+  }
+  hoverRide = hit?.object.userData.ride ?? null;
+  if (hoverRide) {
+    look.setOutline(null, false);
+    $('crosshair').classList.add('active');
+    setHint(`<b>${hoverRide.name}</b> — <kbd>Right-click</kbd> ${hoverRide.label}`);
     return;
   }
   hoverFan = hit?.object.userData.fan ?? null;
@@ -1570,8 +1655,10 @@ document.addEventListener('keydown', (e) => {
   if (mode === 'catalog' && (e.code === 'KeyB' || e.code === 'Escape')) { play(); return; }
   if (mode === 'movie' && e.code === 'Escape') { closeMovie(); return; }
   if (mode !== 'play') return;
+  if (e.code === 'F8') { teleportToFunPark(); e.preventDefault(); return; } // hidden: for testing
   keys[e.code] = true;
   if (riding) { if (e.code === 'KeyE' || e.code === 'Space') { getOutOfRide(); e.preventDefault(); } return; }
+  if (parkRide) { if (e.code === 'KeyE' || e.code === 'Space') { leaveParkRide(); e.preventDefault(); } if (parkRide?.ride.name !== 'Bumper Cars') return; }
   if (driving) {
     if (e.code === 'KeyE') exitCar();
     if (e.code === 'Space') e.preventDefault();
@@ -1660,7 +1747,7 @@ spawnInBed();
 settleAll();
 updateStarHud();
 startNet();
-if (params.has('shot')) window.__test = { rules, look, animals, audio, inter, interact, items, byId, setSwitch, player, hover: (it) => { hovered = it; }, play: () => { mode = 'play'; }, enterCar: (type) => enterCar(items.find((i) => i.userData.type === type)), keys, doors: world.doors, setDoor, folks, traffic, spawnHeld, putDown, paint: (name) => { hoverSurface = { kind: 'wall', room: world.rooms.find((r) => r.name === name) }; paint(); }, player };
+if (params.has('shot')) window.__test = { fun: world.funpark, startParkRide, rules, look, animals, audio, inter, interact, items, byId, setSwitch, player, hover: (it) => { hovered = it; }, play: () => { mode = 'play'; }, enterCar: (type) => enterCar(items.find((i) => i.userData.type === type)), keys, doors: world.doors, setDoor, folks, traffic, spawnHeld, putDown, paint: (name) => { hoverSurface = { kind: 'wall', room: world.rooms.find((r) => r.name === name) }; paint(); }, player };
 
 if (params.has('shot')) show(null);
 else if (params.has('creator')) openCreator();
@@ -1685,7 +1772,8 @@ function updatePad(dt) {
       player.pitch = THREE.MathUtils.clamp(player.pitch - g.ry * 1.8 * dt, -1.25, 1.1);
       drive.lastMouse = performance.now();
     }
-    if (riding) { if (g.pressed(BTN.B) || g.pressed(BTN.A)) getOutOfRide(); }
+    if (parkRide) { if (g.pressed(BTN.B)) leaveParkRide(); }
+    else if (riding) { if (g.pressed(BTN.B) || g.pressed(BTN.A)) getOutOfRide(); }
     else if (driving) {
       if (g.pressed(BTN.A)) honk();
       if (g.pressed(BTN.B)) exitCar();
@@ -1759,8 +1847,10 @@ renderer.setAnimationLoop(() => {
   for (const f of world.fans) { const u = f.userData; u.speed += ((u.off ? 0 : 3) - u.speed) * Math.min(1, dt * 1.2); f.rotation.y += dt * u.speed; }
   for (const it of animItems) if (it.visible) it.userData.anim(it, time);
   world.update(dt, time);
+  world.funpark.update(dt, time, camera.position, () => { if (time - bumpAt > 0.3) { bumpAt = time; tone(120, 0.12, 'square', 0.08, 0.6); noise(0.1, 0.08, 1500); } });
   if (mode === 'play') {
-    if (inter.busy()) inter.updatePlayer(dt, time);
+    if (parkRide) updateParkRide(dt);
+    else if (inter.busy()) inter.updatePlayer(dt, time);
     else if (riding) updateRide();
     else if (driving) updateDriving(dt); else updateMovement(dt);
     checkRules(dt);
@@ -1771,6 +1861,11 @@ renderer.setAnimationLoop(() => {
   avatar.root.rotation.y = player.facing;
   animateCharacter(avatar, time, player.speed, !!held || !!driving);
   if (riding) avatar.parts.legL.rotation.x = avatar.parts.legR.rotation.x = -Math.PI / 2;
+  if (parkRide) { // sit in the seat, tipping and turning with the ride (even upside down!)
+    avatar.root.quaternion.copy(parkRide.q);
+    avatar.parts.legL.rotation.x = avatar.parts.legR.rotation.x = -Math.PI / 2;
+    if (parkRide.ride.coaster && parkRide.session.speed?.() > 12) avatar.parts.armL.rotation.x = avatar.parts.armR.rotation.x = -2.9; // hands up!
+  }
   inter.poseAvatar(avatar);
   if (player.air) jumpPose(avatar, !!held);
   else if (player.swimming && !held && !inter.busy()) { // paddle paddle

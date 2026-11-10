@@ -775,6 +775,17 @@ export const AREAS = [
     ],
   },
   {
+    id: 'funpark',
+    furniture: [
+      { item: 'cottoncandystand', x: 72.5, z: 104.5, rot: 90 }, { item: 'hotdogstand', x: 87.5, z: 104.5, rot: -90 },
+      { item: 'icecreamcounter', x: 72.8, z: 132, rot: 90 }, { item: 'gamebooth', x: 74.2, z: 141, rot: 90 }, { item: 'gamebooth', x: 85.8, z: 141, rot: -90, color: '#93c9ea' },
+      { item: 'balloons', x: 76.2, z: 101.5 }, { item: 'balloons', x: 83.8, z: 101.5, color: P.sky }, { item: 'balloons', x: 76, z: 146, color: P.mint },
+      { item: 'flowerbed', x: 74, z: 99.5 }, { item: 'flowerbed', x: 86, z: 99.5 },
+      { item: 'bench', x: 76.4, z: 118, rot: 90 }, { item: 'bench', x: 83.6, z: 118, rot: -90 }, { item: 'bench', x: 40, z: 129.6, rot: 180 },
+      { item: 'bench', x: 92, z: 155.6, rot: 180 }, { item: 'picnictable', x: 70, z: 120 }, { item: 'picnictable', x: 89, z: 160 },
+    ],
+  },
+  {
     id: 'pool',
     furniture: [
       { item: 'divingboard', x: 33, z: -51.0, rot: 180 },
@@ -813,6 +824,8 @@ export const ZONES = [
   { name: 'School Playground', icon: '🏀', x: 6, z: -48, w: 15, d: 12 },
   { name: 'Lessenger Elementary', icon: '🏫', x: -20, z: -36, w: 26, d: 5 },
   { name: 'Kenwood Pool', icon: '🏊', x: 24, z: -64, w: 18, d: 14 },
+  { name: 'PepCity Fun Park', icon: '🎢', x: -45, z: 92, w: 180, d: 110 },
+  { name: 'Fun Park Dr', icon: '🎡', x: 76, z: -7, w: 8, d: 93 },
   { name: 'PepCity Farm', icon: '🚜', x: -108, z: -64, w: 34, d: 68 },
   { name: 'Lighthouse Pier', icon: '🗼', x: 112, z: 8, w: 30, d: 4 },
   { name: 'Great Lake Beach', icon: '🏖️', x: 94, z: -110, w: 120, d: 200 },
@@ -856,12 +869,31 @@ export const STARS = [
   [-49.4, 0.6, 7.4],    // movie theater
   [-89.5, 0.6, -5.5],   // pumpkin patch
   [137, 0.7, 10],       // end of the lighthouse pier
+  [55, 27.4, 114.85],   // top of the Ferris wheel (ride it!)
+  [27.8, 25.0, 139],    // top of the Thunder Loop's big hill (ride it!)
+  [102.7, 32.3, 165],   // top of the drop tower (ride it!)
 ];
 
 // Swimming pools: [x0, z0, x1, z1] of the water
 export const POOLS = [[27, -61, 39, -53]];
 
-export const WORLD_BOUNDS = { minX: -110, maxX: 140, minZ: -105, maxZ: 85 };
+export const WORLD_BOUNDS = { minX: -110, maxX: 140, minZ: -105, maxZ: 200 };
+
+// ---------- PepCity Fun Park (north of town, up Fun Park Dr) ----------
+export const FUNPARK = {
+  roadX: 80, road: [-7.4, 86], bridgeZ: 51.8,
+  lot: [70, 86, 90, 96.5], gate: [80, 98],
+  paths: [[78, 98, 82, 175], [8, 124, 112, 128], [30, 150, 110, 154], [8, 107, 12, 126], [48, 154, 52, 163.5], [111, 110, 115, 124]],
+  coasters: {
+    thunder: [[0, 1.5, 104], [12, 1.5, 104], [21, 1.6, 105.5], [27, 2.5, 111], [28.5, 7, 119], [28.5, 14, 127], [28.3, 21, 134], [27.8, 24, 139], [26.8, 21, 143.5],
+      [25.8, 10, 150], [25, 2.5, 156], [23.5, 3, 163], [19, 4, 170], [13, 2, 176.5], [2.00, 1.50, 177.00], [-3.66, 3.84, 177.45], [-6.00, 9.50, 177.90], [-3.66, 15.16, 178.35], [2.00, 17.50, 178.80], [7.66, 15.16, 179.25], [10.00, 9.50, 179.70], [7.66, 3.84, 180.15], [2.00, 1.50, 180.60],
+      [-10, 2.5, 181], [-21, 5, 181.5], [-30, 7, 177], [-34.5, 9, 168], [-35, 12, 158], [-34, 4.5, 148], [-33, 7.5, 138], [-30, 3, 127], [-24, 2, 115], [-14, 1.6, 106.5], [-6, 1.5, 104]],
+    dragon: [[44, 1.4, 166], [56, 1.4, 166], [64, 2.5, 167.5], [69, 6, 172], [70, 8, 178], [67, 7, 184], [60, 2.5, 188], [52, 5, 188.5], [45, 1.6, 186], [41, 4, 180], [40, 3.5, 173], [41, 1.5, 168.5]],
+    kiddie: [[110, 1, 106], [118, 1, 106], [123.5, 2, 108.5], [125.5, 1.5, 114], [123, 2.2, 120], [116, 1.2, 121.5], [109.5, 1.8, 119], [106.5, 1.2, 112]],
+  },
+  ferris: [55, 115], carousel: [95, 116], swings: [95, 138], teacups: [112, 142], drop: [100, 165], pirate: [66, 160], bumper: [52, 140],
+};
+
 
 // The farm (west) and the beach on the Great Lake (east)
 export const FARM = { pen: [-100, -36, -80, -16], gate: [-26.5, -23.5], corn: [-106, -12, -96, 4], road: [-88, -48.5, -72.5, -45.5] };
@@ -871,7 +903,7 @@ export const BEACH = { sand: 96, shore: 113, swimTo: 122, pier: { x0: 111, x1: 1
 export const WOODS = {
   loopRect: { x0: -70, x1: 90, z0: -70, z1: -12 },
   townStrip: { x0: -30, x1: 72, z0: -9, z1: 22 }, // the houses and their yards: no forest here
-  clearRects: [[-108, -64, -74, 6], [95, -200, 400, 200]], // the farm and the beach
+  clearRects: [[-108, -64, -74, 6], [95, -200, 400, 200], [-45, 90, 135, 210], [75, -9, 85, 92]], // the farm, the beach, the fun park and its road
   trails: [
     [[5, 17], [5, 28], [2, 38], [-12, 45], [-30, 47], [-48, 52], [-55, 62], [-40, 70], [-15, 72], [8, 66], [28, 60], [48, 63], [68, 58], [80, 46], [70, 36], [60, 31]],
     [[2, 38], [14, 42], [19.5, 45.5]],    // to the frog pond
@@ -971,6 +1003,20 @@ export const PEOPLE = [
   { name: 'Beach Bob', path: [[101, -60], [101, 60]], speed: 0.8, says: ['What a beautiful lake! 🌊', 'The water is chilly! 🥶'],
     look: { age: 'grownup', body: 'boy', skin: '#e9b896', hair: 'buzz', hairColor: '#7a4a2c', top: 'tank', topColor: '#f7da7e', bottom: 'shorts', bottomColor: '#5fb3a8', hat: 'cap', extraColor: '#fbfaf7' } },
 
+  // ---- people at the Fun Park ----
+  { name: 'Bubbles the Clown', job: 'juggle', at: [80, 112], face: 180, says: ['Honk honk! 🤡', 'Want to see me juggle? 🎪', 'Ride the Thunder Loop if you dare! 🎢'],
+    look: { age: 'grownup', body: 'boy', skin: '#fbe3cf', hair: 'curly', hairColor: '#ec7d72', top: 'hoodie', topColor: '#bba6e6', bottom: 'pants', bottomColor: '#f7da7e', hat: 'cap', extraColor: '#d9443a' } },
+  { name: 'Rita', job: 'wave', at: [58.3, 120.5], face: 150, says: ['Hop on the Ferris wheel! 🎡', 'You can see the whole city from the top! 🌆'],
+    look: { age: 'grownup', body: 'girl', skin: '#c68c63', hair: 'ponytail', hairColor: '#2b2220', top: 'tee', topColor: '#ef84ad', bottom: 'pants', bottomColor: '#3b3b48', hat: 'cap', extraColor: '#ef84ad' } },
+  { name: 'Coaster Carl', job: 'wave', at: [9.5, 108.5], face: 0, says: ['Keep your hands inside the car! 🎢', 'The Thunder Loop goes upside down! 🌀'],
+    look: { age: 'grownup', body: 'boy', skin: '#f1c7a3', hair: 'short', hairColor: '#4a2f22', beard: 'beard', top: 'tee', topColor: '#d9443a', bottom: 'pants', bottomColor: '#3b3b48', hat: 'cap', extraColor: '#d9443a' } },
+  { name: 'Cora', job: 'type', at: [71.6, 104.5], face: 90, says: ['Cotton candy! Pink or blue? 🍭', 'So fluffy and sweet! ☁️'],
+    look: { age: 'grownup', body: 'girl', skin: '#fbe3cf', hair: 'bun', hairColor: '#ef84ad', top: 'tee', topColor: '#ef84ad', bottom: 'skirt', bottomColor: '#fbfaf7', hat: 'none' } },
+  { name: 'Fun Park Fran', path: [[80, 100], [80, 152], [40, 152], [40, 126], [80, 126]], loop: true, speed: 0.9, says: ['Best day ever! 🎉', 'Did you ride the Ferris wheel? 🎡'],
+    look: { age: 'grownup', body: 'girl', skin: '#e0ac84', hair: 'long', hairColor: '#a8592f', top: 'tee', topColor: '#aee0c5', bottom: 'shorts', bottomColor: '#5b7fb0', hat: 'none' } },
+  { name: 'Timmy', path: [[80, 126], [110, 126], [110, 152], [80, 152]], loop: true, speed: 1.4, run: true, says: ['I rode EVERYTHING! 🎢', 'Let us go on the teacups! ☕'],
+    look: { age: 'kid', body: 'boy', skin: '#9a6440', hair: 'curly', hairColor: '#2b2220', top: 'tee', topColor: '#f7da7e', bottom: 'shorts', bottomColor: '#5b8fd9', hat: 'cap', extraColor: '#ec7d72' } },
+
   // ---- people at work (at: where they stand, face: which way, in degrees like furniture) ----
   { name: 'Officer Dan', job: 'directing', at: [-23.4, -57.5], face: -90, says: ['Officer Dan, keeping you safe! 👮', 'Slow down near the school! 🚸'],
     look: { age: 'grownup', body: 'boy', skin: '#f1c7a3', hair: 'short', hairColor: '#4a2f22', top: 'long', topColor: '#2e4a7a', bottom: 'pants', bottomColor: '#2a2a33', hat: 'cap', extraColor: '#2e4a7a' } },
@@ -1065,11 +1111,18 @@ PEOPLE.push({ name: 'Receptionist Rosa', job: 'type', at: [-57.25, -54.0], face:
 PEOPLE.push({ name: 'Steve', path: [[-49.3, -53.2], [-55.0, -53.2]], speed: 0.7, says: ['Getting some water! 💧', 'Is it lunchtime yet? 🥪'],
   look: { age: 'grownup', body: 'boy', skin: '#f1c7a3', hair: 'short', hairColor: '#c9c4bf', top: 'long', topColor: '#5b7fb0', bottom: 'pants', bottomColor: '#3b3b48', face: 'glasses', hat: 'none' } });
 
-export const SAYINGS = [
-  'Hi {name}! 👋', 'What a sunny day! ☀️', 'Have you found all the golden stars? ⭐', 'The ice cream shop has the BEST cones! 🍦',
-  'I love your outfit! ✨', 'Want to race to the park? 🏃', 'Did you see the ducks at the pond? 🦆', 'Nice to see you, {name}!',
-  'School is so much fun! 📚', 'Have you been to the toy shop? 🧸', 'Watch out for cars! 🚗', 'Wanna be friends? 💖',
-];
+// What people say when they don't have their own lines. Kids and grown-ups talk differently:
+// only kids ask to be friends or to race; grown-ups are friendly neighbors.
+export const SAYINGS = {
+  kid: [
+    'Hi {name}! 👋', 'Wanna be friends? 💖', 'Want to race to the park? 🏃', 'I love your outfit! ✨',
+    'School is so much fun! 📚', 'Have you found all the golden stars? ⭐', 'Have you been to the toy shop? 🧸', 'Did you see the ducks at the pond? 🦆',
+  ],
+  grownup: [
+    'Hi {name}! 👋', 'What a sunny day! ☀️', 'Nice to see you, {name}!', 'Have a great day! 😊',
+    'The ice cream shop has the BEST cones! 🍦', 'Did you see the ducks at the pond? 🦆', 'Watch out for cars! 🚗', 'Remember to look both ways! 🚸',
+  ],
+};
 
 // Cars (and a school bus) driving around the loop
 export const TRAFFIC = {

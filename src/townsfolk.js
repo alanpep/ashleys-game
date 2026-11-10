@@ -78,6 +78,8 @@ export function setupTownsfolk(scene, people, sayings, hooks = {}) {
       const brush = m(new THREE.CylinderGeometry(0.01, 0.01, 0.25, 6), '#a0745a'); brush.position.set(0, -arm - 0.1, 0.03);
       const tip = m(new THREE.SphereGeometry(0.02, 8, 6), ['#ef84ad', '#93c9ea', '#f7da7e'][Math.floor(f.offset) % 3]); tip.position.set(0, -arm - 0.23, 0.03);
       ch.parts.armR.add(brush, tip);
+    } else if (def.job === 'juggle') { // three balls in the air
+      f.balls = ['#ec7d72', '#f7da7e', '#93c9ea'].map((c) => { const b = m(new THREE.SphereGeometry(0.09, 10, 8), c); scene.add(b); return b; });
     } else if (def.job === 'mail') { // a mail bag on the hip
       const bag = m(new THREE.BoxGeometry(0.12, 0.28, 0.32), '#3f5f8f'); bag.position.set(0.27, ch.parts.legL.position.y + 0.12, 0);
       const env = m(new THREE.BoxGeometry(0.02, 0.1, 0.16), '#fbfaf7'); env.position.set(0.27, ch.parts.legL.position.y + 0.29, 0.04);
@@ -109,6 +111,15 @@ export function setupTownsfolk(scene, people, sayings, hooks = {}) {
       case 'read':
         p.armL.rotation.x = p.armR.rotation.x = -1.0; p.head.rotation.x = 0.3;
         break;
+      case 'juggle': {
+        p.armL.rotation.x = p.armR.rotation.x = -1.4 + Math.sin(t * 6) * 0.2;
+        const fx = Math.sin(f.root.rotation.y), fz = Math.cos(f.root.rotation.y), rx = fz, rz = -fx;
+        f.balls.forEach((b, i) => {
+          const a = t * 4 + (i * Math.PI * 2) / 3;
+          b.position.set(f.root.position.x + fx * 0.4 + rx * Math.cos(a) * 0.35, f.ch.height * 0.75 + 0.35 + Math.abs(Math.sin(a)) * 0.6, f.root.position.z + fz * 0.4 + rz * Math.cos(a) * 0.35);
+        });
+        break;
+      }
       case 'cook': // stirring a pot
         p.armR.rotation.x = -1.3 + Math.sin(t * 5) * 0.25; p.armR.rotation.z = Math.cos(t * 5) * 0.3;
         break;
@@ -179,7 +190,7 @@ export function setupTownsfolk(scene, people, sayings, hooks = {}) {
     byName: (n) => folks.find((f) => f.def.name === n),
     // say something (a random line, or a given one), with a feeling on their face, out loud
     talk(f, name, facing, given, mood = 'happy') {
-      const lines = f.def.says ?? sayings;
+      const lines = f.def.says ?? (f.def.look?.age === 'kid' ? sayings.kid : sayings.grownup);
       const line = (given ?? lines[Math.floor(Math.random() * lines.length)]).replace('{name}', name || 'friend');
       f.mood = mood; f.moodUntil = performance.now() + (mood === 'mad' ? 6000 : 3500);
       hooks.speak?.(line, f);

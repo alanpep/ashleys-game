@@ -1449,6 +1449,41 @@ export const CATALOG = [
     b.cone(0.2, 0.2, 0, 0.8, 0, MAIN, undefined, 12);
     b.box(0.01, 0.2, 0.01, 0, 1.0, 0, '#8a6a3a'); b.box(0.12, 0.07, 0.005, 0.06, 1.13, 0, '#ef84ad');
   } },
+
+  // ---- Fun Park stands ----
+  { id: 'cottoncandystand', name: 'Cotton Candy Stand', emoji: '🍭', cat: 'Kitchen & Bath', color: '#ef84ad', fixed: true, action: 'give', gives: ['cottoncandy'], giveMsg: 'Fluffy cotton candy! 🍭', giveLabel: 'get cotton candy', build: (b) => {
+    b.box(1.8, 1.0, 0.9, 0, 0, 0, MAIN);
+    for (const x of [-0.85, 0.85]) b.box(0.08, 1.4, 0.08, x, 1.0, 0.4, WHITE);
+    const m = new THREE.MeshStandardMaterial({ map: stripes('#ef84ad', '#fbfaf7'), roughness: 0.7 });
+    m.map.repeat.set(6, 1);
+    b.box(2.0, 0.12, 1.1, 0, 2.4, 0.1, m);
+    for (let i = 0; i < 5; i++) { b.cyl(0.01, 0.01, 0.3, -0.6 + i * 0.3, 1.0, -0.2, WHITE); b.ball(0.12, -0.6 + i * 0.3, 1.38, -0.2, i % 2 ? '#93c9ea' : '#f4a3c4'); }
+  } },
+  { id: 'hotdogstand', name: 'Hot Dog Stand', emoji: '🌭', cat: 'Kitchen & Bath', color: '#f2cf63', fixed: true, action: 'give', gives: ['hotdog'], giveMsg: 'A yummy hot dog! 🌭', giveLabel: 'get a hot dog', build: (b) => {
+    b.box(1.8, 1.0, 0.9, 0, 0, 0, MAIN);
+    b.box(1.6, 0.1, 0.7, 0, 1.0, 0, '#c9ccd1');
+    for (const x of [-0.85, 0.85]) b.box(0.08, 1.4, 0.08, x, 1.0, 0.4, WHITE);
+    const m = new THREE.MeshStandardMaterial({ map: stripes('#d9443a', '#f2cf63'), roughness: 0.7 });
+    m.map.repeat.set(6, 1);
+    b.box(2.0, 0.12, 1.1, 0, 2.4, 0.1, m);
+    for (let i = 0; i < 4; i++) b.add(new THREE.CapsuleGeometry(0.04, 0.22, 4, 8), '#c8563c', -0.45 + i * 0.3, 1.14, 0).rotation.z = Math.PI / 2;
+  } },
+  { id: 'gamebooth', name: 'Ring Toss Game', emoji: '🎯', cat: 'Toys & Pets', color: '#d9443a', fixed: true, action: 'give', gives: ['teddy', 'unicorn', 'dino', 'balloons', 'ball'], giveMsg: 'You won a prize! 🏆', giveLabel: 'play ring toss', build: (b) => {
+    b.box(2.2, 0.9, 0.5, 0, 0, 0.6, MAIN);
+    for (const x of [-1.05, 1.05]) b.box(0.1, 2.6, 0.1, x, 0, 0.8, WHITE);
+    const m = new THREE.MeshStandardMaterial({ map: stripes('#d9443a', '#fbfaf7'), roughness: 0.7 });
+    m.map.repeat.set(6, 1);
+    b.box(2.4, 0.15, 1.8, 0, 2.6, 0, m);
+    b.box(2.2, 1.6, 0.1, 0, 0.9, -0.8, '#fbfaf7');
+    for (let i = 0; i < 9; i++) b.cyl(0.04, 0.05, 0.25, -0.6 + (i % 3) * 0.6, 0.9, 0.2 - Math.floor(i / 3) * 0.3, ['#f7da7e', '#93c9ea', '#aee0c5'][i % 3]);
+    for (let i = 0; i < 3; i++) b.ball(0.16, -0.6 + i * 0.6, 1.25, -0.6, ['#c69c6d', '#f4f1ea', '#7cc46a'][i]);
+  } },
+  { id: 'cottoncandy', name: 'Cotton Candy', emoji: '🍭', cat: 'Kitchen & Bath', color: '#f4a3c4', build: (b) => { b.cyl(0.012, 0.012, 0.32, 0, 0, 0, WHITE); b.ball(0.13, 0, 0.36, 0, MAIN).scale.set(1, 1.15, 1); } },
+  { id: 'hotdog', name: 'Hot Dog', emoji: '🌭', cat: 'Kitchen & Bath', color: '#e9c27a', build: (b) => {
+    b.add(new THREE.CapsuleGeometry(0.045, 0.2, 4, 8), MAIN, 0, 0.05, 0).rotation.z = Math.PI / 2;
+    b.add(new THREE.CapsuleGeometry(0.03, 0.24, 4, 8), '#c8563c', 0, 0.09, 0).rotation.z = Math.PI / 2;
+    b.box(0.2, 0.01, 0.015, 0, 0.12, 0, '#f2cf63');
+  } },
 ];
 
 export const BY_ID = Object.fromEntries(CATALOG.map((d) => [d.id, d]));

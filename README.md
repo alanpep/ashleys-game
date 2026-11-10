@@ -52,9 +52,10 @@ If you delete `saves/world.json`, the next player to join brings their own copy 
 - **Around town**: the Fire Station (fire pole, alarm bell, fire truck), the Police Station (police car), Kenwood Market (checkout gives snacks, shopping carts), the Office Tower (elevator, computers), Pizza Palace (the oven makes pizza), the Pet Shop (adopt a pet!), and Kenwood Pool (swim, and use the diving board).
 - **Vehicles**: the family's white pickup truck and white SUV at home, plus a minivan, ice cream truck (plays a song when you honk), fire truck and police car (sirens).
 - **Animals**: pets wander around, dogs come say hi, wild bunnies hop around the yards, and birds fly off when you get close.
+- **PepCity Fun Park**: drive up Fun Park Dr (off Kenwood Ave, past the woods). Right-click a ride to get on: three roller coasters (the Thunder Loop goes upside down!), a Ferris wheel, carousel, swing ride, teacups, drop tower, pirate ship and bumper cars (you steer). Plus cotton candy, hot dogs, ice cream and a ring-toss game.
 - **More places**: the Hospital (checkups, an X-ray room, an ambulance), the Library (storybooks read out loud), PepCity Cinema (popcorn and a movie), PepCity Farm out west (barn, tractor, animals, cornfield, pumpkin patch), and the Great Lake Beach out east (sand, wading, a pier and lighthouse, sailboats).
 - **Kenwood Woods**: trails start behind your house, behind the Blue House, and at the Secret Garden. Find the treehouse (climb it!), the campsite, the Fairy Ring, Owl Hollow, the Frog Pond, the Deer Meadow, berry bushes, and a hidden treasure chest. Watch for deer, foxes, squirrels, owls, frogs, turtles and fireflies.
-- **Find all 26 golden stars** hidden around the neighborhood to unlock the Golden Crown. To hunt for them again, use **Reset my stars** in the Esc menu.
+- **Find all 29 golden stars** hidden around the neighborhood to unlock the Golden Crown. To hunt for them again, use **Reset my stars** in the Esc menu.
 
 ## Changing the house
 

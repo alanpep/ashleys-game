@@ -7,6 +7,8 @@ import { makeLoop } from './roads.js';
 import { buildForest } from './forest.js';
 import { WOODS, FARM, BEACH } from './neighborhood.js';
 import { buildPlaces } from './places.js';
+import { buildFunPark } from './funpark.js';
+import { FUNPARK } from './neighborhood.js';
 import { tex } from './textures.js';
 import { P } from './palette.js';
 import { mergeStatic, remap } from './merge.js';
@@ -35,9 +37,10 @@ export function buildWorld() {
   };
 
   // ---------- ground + distant hills ----------
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(420, 420), new THREE.MeshStandardMaterial({ color: P.grass, map: tex.grass(), roughness: 1 }));
+  const GROUND = 900; // big enough to reach past every forest edge
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(GROUND, GROUND), new THREE.MeshStandardMaterial({ color: P.grass, map: tex.grass(), roughness: 1 }));
   const gu = ground.geometry.attributes.uv;
-  for (let i = 0; i < gu.count; i++) gu.setXY(i, gu.getX(i) * 420, gu.getY(i) * 420);
+  for (let i = 0; i < gu.count; i++) gu.setXY(i, gu.getX(i) * GROUND, gu.getY(i) * GROUND);
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(8, -0.02, -12);
   ground.userData = { isGround: true, keep: true };
@@ -49,6 +52,7 @@ export function buildWorld() {
   for (let i = 0; i < 26; i++) {
     const a = (i / 26) * Math.PI * 2, r = 205 + (i % 3) * 15;
     if (Math.cos(a) > 0.35) continue; // no hills out east: that's the Great Lake
+    if (Math.sin(a) > 0.35) continue; // or up north, behind the Fun Park
     const hill = new THREE.Mesh(new THREE.SphereGeometry(30 + (i % 4) * 8, 20, 12), hillMat[i % 3]);
     hill.position.set(8 + Math.cos(a) * r, -12, -12 + Math.sin(a) * r);
     hill.scale.y = 0.55;
@@ -188,6 +192,10 @@ export function buildWorld() {
   const places = buildPlaces(W, { FARM, BEACH, loop });
   group.add(places.group);
   W.places = places;
+  // PepCity Fun Park
+  const funpark = buildFunPark(W, FUNPARK);
+  group.add(funpark.group);
+  W.funpark = funpark;
   group.add(forest.group);
   W.forest = forest;
   // a few scattered trees inside the road loop (never on a road or the parking lot)
